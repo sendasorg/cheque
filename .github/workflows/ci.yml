@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate marketplace
+        run: npx --yes @anthropic-ai/claude-code@2.1.296 plugin validate . --strict
+
+      - name: Lint shell and workflows
+        run: |
+          pip install --quiet shellcheck-py==0.11.0.1 actionlint-py==1.7.12.25
+          shellcheck bin/stroppers-guard bin/stroppers-finish bin/stroppers-labels bin/stroppers-smoke tests/fake-gh tests/test_scripts.sh
+          actionlint
+          actionlint -shellcheck= templates/workflows/*.yml
+
+      - name: Test
+        run: |
+          python3 -m unittest discover tests
+          tests/test_scripts.sh
+
+  pins:
+    # Upstream moving is news, not a failure. This job reports drift and never blocks.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: bin/check-pins

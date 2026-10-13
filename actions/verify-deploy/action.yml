@@ -1,0 +1,71 @@
+name: stroppers verify deploy
+description: >
+  Smoke-checks a finished deployment and opens an issue when it fails. No model
+  runs here: a failing check becomes a needs-triage issue that a human (or the
+  agent, once someone labels it ready-for-agent) picks up.
+
+inputs:
+  url:
+    description: Base URL of the deployment. Usually github.event.deployment_status.environment_url.
+    required: true
+  paths:
+    description: Newline-separated paths that must answer 2xx or 3xx
+    required: false
+    default: /
+  attempts:
+    description: Tries per path before it counts as failed
+    required: false
+    default: "4"
+  sha:
+    description: Commit that was deployed
+    required: true
+  environment:
+    description: Deployment environment name, used in the issue title
+    required: false
+    default: production
+  github_token:
+    description: Token allowed to create issues
+    required: true
+
+outputs:
+  passed:
+    description: "true when every path answered"
+    value: ${{ steps.smoke.outputs.passed }}
+
+runs:
+  using: composite
+  steps:
+    - name: Smoke check
+      id: smoke
+      shell: bash
+      env:
+        URL: ${{ inputs.url }}
+        PATHS: ${{ inputs.paths }}
+        ATTEMPTS: ${{ inputs.attempts }}
+      run: |
+        mapfile -t paths < <(grep -v '^[[:space:]]*$' <<<"$PATHS")
+        if report=$("$GITHUB_ACTION_PATH/../../bin/stroppers-smoke" "$URL" "$ATTEMPTS" "${paths[@]}"); then
+          echo "passed=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "passed=false" >> "$GITHUB_OUTPUT"
+          { echo "report<<STROPPERS_EOF"; echo "$report"; echo "STROPPERS_EOF"; } >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Open an issue
+      if: steps.smoke.outputs.passed == 'false'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github_token }}
+        SHA: ${{ inputs.sha }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        REPORT: ${{ steps.smoke.outputs.report }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        set -euo pipefail
+        "$GITHUB_ACTION_PATH/../../bin/stroppers-labels" ensure
+        prs=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/pulls" -q '[.[] | "#\(.number)"] | join(", ")' || true)
+        body=$(printf 'The %s deployment of %s failed its smoke check.\n\n%s\n\nPRs in this commit: %s\nRun: %s\n' \
+          "$ENVIRONMENT" "$SHA" "$REPORT" "${prs:-none found}" "$RUN_URL")
+        gh issue create --title "Smoke check failed on $ENVIRONMENT at ${SHA:0:7}" --label needs-triage --body "$body"
+        echo "::error::Smoke check failed on $ENVIRONMENT"
+        exit 1

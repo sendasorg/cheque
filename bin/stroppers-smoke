@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Checks that each path answers 2xx or 3xx on the deployed URL, with retries
+# while the deployment warms up. Prints failures to stdout; exits 1 on any.
+# usage: stroppers-smoke <base_url> <attempts> <path>...
+set -uo pipefail
+
+base=${1%/} attempts=$2
+shift 2
+failed=0
+
+for path in "$@"; do
+  url="$base/${path#/}"
+  for ((i = 1; i <= attempts; i++)); do
+    code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$url" 2>/dev/null)
+    [[ $code =~ ^[23] ]] && break
+    [ "$i" -lt "$attempts" ] && sleep $((i * 5))
+  done
+  if [[ $code =~ ^[23] ]]; then
+    echo "ok   $code $url" >&2
+  else
+    echo "- \`$url\` answered \`${code:-no response}\` after $attempts attempts"
+    failed=1
+  fi
+done
+
+exit $failed

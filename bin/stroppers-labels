@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Creates or updates the labels the loop uses as state. Idempotent.
+# The first four match mattpocock-skills' default triage vocabulary.
+set -euo pipefail
+
+[ "${1:-}" = "ensure" ] || { echo "usage: stroppers-labels ensure" >&2; exit 2; }
+
+while IFS='|' read -r name color description; do
+  gh label create "$name" --color "$color" --description "$description" --force >/dev/null
+done <<'LABELS'
+ready-for-agent|0e8a16|Specified well enough for an agent to implement unattended
+needs-info|d876e3|Blocked on answers from the issue author
+needs-triage|fbca04|Needs a human to triage
+ready-for-human|1d76db|Needs human judgment to implement
+agent-working|c5def5|An agent run is in progress
+agent|5319e7|PR opened and driven by an agent
+needs-human|b60205|The agent loop stopped; a human has to pick this up
+LABELS

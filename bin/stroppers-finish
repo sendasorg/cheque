@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Records the outcome of an agent run as labels and, when needed, one comment.
+# Reads MODE, NUMBER, BRANCH, CLAUDE_OUTCOME, AUTO_MERGE, RUN_URL from the
+# environment and prints GITHUB_OUTPUT lines.
+set -euo pipefail
+
+handoff() {
+  local kind=$1 target=$2 why=$3
+  gh "$kind" edit "$target" --add-label needs-human >/dev/null
+  gh "$kind" comment "$target" --body "$why Run: $RUN_URL" >/dev/null
+}
+
+case $MODE in
+  implement)
+    gh issue edit "$NUMBER" --remove-label agent-working >/dev/null
+    pr=$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number // empty')
+    if [ -n "$pr" ]; then
+      gh pr edit "$pr" --add-label agent >/dev/null
+      if [ "$AUTO_MERGE" = true ]; then
+        gh pr merge "$pr" --auto --squash ||
+          echo "::warning::Could not enable auto-merge on #$pr. Turn on 'Allow auto-merge' in the repository settings."
+      fi
+      echo "pr_number=$pr"
+    elif gh issue view "$NUMBER" --json labels -q '.labels[].name' | grep -qx needs-info; then
+      echo "stroppers: the agent asked for more information on #$NUMBER" >&2
+    else
+      handoff issue "$NUMBER" "The agent run ($CLAUDE_OUTCOME) ended without opening a PR or asking a question."
+    fi
+    ;;
+
+  respond)
+    if [ "$CLAUDE_OUTCOME" != success ]; then
+      handoff pr "$NUMBER" "The agent run failed before it could finish this round."
+    fi
+    echo "pr_number=$NUMBER"
+    ;;
+esac

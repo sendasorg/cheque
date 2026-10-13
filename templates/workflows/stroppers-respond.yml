@@ -1,0 +1,64 @@
+# Drives agent PRs through review feedback and red CI.
+# Installed by stroppers-init. Keep the setup steps in sync with stroppers-implement.yml.
+name: stroppers respond
+
+on:
+  # Line comments arrive with their review, so one review is one round.
+  pull_request_review:
+    types: [submitted]
+  workflow_run:
+    # The name of the workflow that runs your tests.
+    workflows: [__CI_WORKFLOW__]
+    types: [completed]
+
+concurrency:
+  group: stroppers-pr-${{ github.event.pull_request.number || github.event.workflow_run.pull_requests[0].number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  respond:
+    # Skip events caused by the agent itself, approvals, green CI, and anything
+    # not on an agent branch from this repository.
+    if: >-
+      github.event.sender.login != format('{0}[bot]', vars.STROPPERS_APP_SLUG) &&
+      github.event.sender.login != 'claude[bot]' &&
+      (
+        (github.event_name == 'pull_request_review' && github.event.review.state != 'approved' &&
+          startsWith(github.event.pull_request.head.ref, 'agent/')) ||
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure' &&
+          github.event.workflow_run.head_repository.full_name == github.repository &&
+          startsWith(github.event.workflow_run.head_branch, 'agent/') &&
+          github.event.workflow_run.pull_requests[0] != null)
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.STROPPERS_APP_CLIENT_ID }}
+          private-key: ${{ secrets.STROPPERS_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
+          permission-actions: read
+          permission-checks: read
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          token: ${{ steps.app.outputs.token }}
+          fetch-depth: 0
+
+      # Setup your test suite needs goes here: runtimes, dependencies, services.
+
+      - uses: sogamoso/stroppers/actions/agent@__STROPPERS_REF__
+        with:
+          mode: respond
+          number: ${{ github.event.pull_request.number || github.event.workflow_run.pull_requests[0].number }}
+          github_token: ${{ steps.app.outputs.token }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_bots: ${{ vars.STROPPERS_APP_SLUG }}
+          max_rounds: "5"

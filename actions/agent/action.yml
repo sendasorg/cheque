@@ -1,0 +1,128 @@
+name: stroppers agent
+description: >
+  Runs one step of the issue-to-PR loop. `implement` turns a labeled issue into
+  a gated PR. `respond` takes an agent PR through review feedback, red CI, and
+  merge conflicts. All state lives in GitHub labels and branches.
+
+inputs:
+  mode:
+    description: "implement | respond"
+    required: true
+  number:
+    description: Issue number (implement) or PR number (respond)
+    required: true
+  github_token:
+    description: >
+      Token used for git pushes and the gh CLI. Use a GitHub App token: pushes
+      made with the default GITHUB_TOKEN do not trigger CI on the resulting PR.
+    required: true
+  anthropic_api_key:
+    description: Anthropic API key. Set this or claude_code_oauth_token.
+    required: false
+    default: ""
+  claude_code_oauth_token:
+    description: Claude Code OAuth token. Set this or anthropic_api_key.
+    required: false
+    default: ""
+  extra_plugins:
+    description: Newline-separated plugins from the stroppers marketplace to add, e.g. agent-skills@stroppers
+    required: false
+    default: ""
+  instructions:
+    description: Repo-specific instructions appended to the prompt (setup quirks, test commands, areas to avoid)
+    required: false
+    default: ""
+  max_rounds:
+    description: Respond rounds allowed on one PR before it is handed to a human
+    required: false
+    default: "5"
+  auto_merge:
+    description: Enable GitHub auto-merge (squash) on PRs this action opens. Branch protection still decides when it merges.
+    required: false
+    default: "false"
+  allowed_bots:
+    description: >
+      Comma-separated GitHub App slugs allowed to trigger a run. Include your
+      own App, or the respond run after the agent's own push fails CI is
+      refused. Add any review bot whose reviews the agent should answer.
+    required: false
+    default: ""
+  model:
+    description: Optional model override passed to Claude Code
+    required: false
+    default: ""
+
+outputs:
+  skipped:
+    description: "true when the guard decided there was nothing to do"
+    value: ${{ steps.guard.outputs.skip }}
+  pr_number:
+    description: PR opened or worked on, when there is one
+    value: ${{ steps.finish.outputs.pr_number }}
+
+runs:
+  using: composite
+  steps:
+    - name: Guard and prepare branch
+      id: guard
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github_token }}
+        MODE: ${{ inputs.mode }}
+        NUMBER: ${{ inputs.number }}
+        MAX_ROUNDS: ${{ inputs.max_rounds }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        set -euo pipefail
+        echo "marketplace=$(cd "$GITHUB_ACTION_PATH/../.." && pwd)" >> "$GITHUB_OUTPUT"
+        "$GITHUB_ACTION_PATH/../../bin/stroppers-labels" ensure
+        "$GITHUB_ACTION_PATH/../../bin/stroppers-guard" "$MODE" "$NUMBER" "$MAX_ROUNDS" "$RUN_URL" >> "$GITHUB_OUTPUT"
+
+    - name: Keep agent scratch out of git
+      if: steps.guard.outputs.skip != 'true'
+      shell: bash
+      run: |
+        printf '%s\n' .claude/data/ .claude/sdlc/ .claude/grumpy/ .claude/worktrees/ .sharpen/ >> "$(git rev-parse --git-path info/exclude)"
+
+    - name: Run Claude Code
+      id: claude
+      if: steps.guard.outputs.skip != 'true'
+      continue-on-error: true
+      uses: anthropics/claude-code-action@c3d45e8e941e1b2ad7b278c57482d9c5bf1f35b3 # v1.0.99
+      env:
+        GH_TOKEN: ${{ inputs.github_token }}
+      with:
+        github_token: ${{ inputs.github_token }}
+        allowed_bots: ${{ inputs.allowed_bots }}
+        anthropic_api_key: ${{ inputs.anthropic_api_key }}
+        claude_code_oauth_token: ${{ inputs.claude_code_oauth_token }}
+        plugin_marketplaces: ${{ steps.guard.outputs.marketplace }}
+        plugins: |
+          mattpocock-skills@stroppers
+          ponytail@stroppers
+          sdlc@stroppers
+          grumpy@stroppers
+          ${{ inputs.extra_plugins }}
+        claude_args: |
+          --allowedTools Bash,Read,Edit,Write,Glob,Grep,Skill,Task,TodoWrite
+          ${{ inputs.model != '' && format('--model {0}', inputs.model) || '' }}
+        prompt: |
+          ${{ steps.guard.outputs.prompt }}
+
+          ${{ inputs.instructions }}
+
+    - name: Record outcome
+      id: finish
+      if: steps.guard.outputs.skip != 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github_token }}
+        MODE: ${{ inputs.mode }}
+        NUMBER: ${{ inputs.number }}
+        BRANCH: ${{ steps.guard.outputs.branch }}
+        CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
+        AUTO_MERGE: ${{ inputs.auto_merge }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        set -euo pipefail
+        "$GITHUB_ACTION_PATH/../../bin/stroppers-finish" >> "$GITHUB_OUTPUT"

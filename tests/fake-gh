@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Stand-in for the gh CLI. Logs every call to $CALLS and answers reads from
+# FAKE_ISSUE, FAKE_PR and FAKE_PR_LIST (JSON strings).
+echo "gh $*" >> "$CALLS"
+query=""
+args=("$@")
+for i in "${!args[@]}"; do [ "${args[$i]}" = -q ] && query=${args[$((i + 1))]}; done
+answer() { if [ -n "$query" ]; then jq -r "$query" <<<"$1"; else echo "$1"; fi; }
+case "$1 $2" in
+  "repo view") answer '{"nameWithOwner":"acme/app"}' ;;
+  "issue view") answer "$FAKE_ISSUE" ;;
+  "pr view") answer "$FAKE_PR" ;;
+  "pr list") answer "${FAKE_PR_LIST:-[]}" ;;
+  "pr checkout") git checkout -q -b "$(jq -r .headRefName <<<"$FAKE_PR")" ;;
+esac
+exit 0

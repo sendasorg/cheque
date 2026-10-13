@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+"""Wire a repository to the stroppers marketplace and delivery loop.
+
+Run from the stroppers checkout, pointing at the target repo:
+
+    bin/stroppers-init --target ../my-app --ci-workflow CI
+
+It merges plugin settings into .claude/settings.json, writes a marked block
+into CLAUDE.md, ignores agent scratch directories, and copies the workflow
+templates. Re-running it updates what it owns and leaves everything else alone.
+"""
+
+import argparse
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+MARKETPLACE = "stroppers"
+REPO = "sogamoso/stroppers"
+DEFAULT_PLUGINS = ["mattpocock-skills", "ponytail", "sdlc", "grumpy"]
+OPTIONAL_PLUGINS = {"addy": "agent-skills"}
+BEGIN, END = "<!-- stroppers:begin -->", "<!-- stroppers:end -->"
+IGNORES = [
+    "# Agent scratch: gate state, plans, specs, review reports",
+    ".claude/data/",
+    ".claude/sdlc/",
+    ".claude/grumpy/",
+    ".claude/worktrees/",
+    ".sharpen/",
+]
+
+
+def update_settings(target, plugins, ref):
+    path = target / ".claude" / "settings.json"
+    settings = json.loads(path.read_text()) if path.exists() else {}
+    settings.setdefault("extraKnownMarketplaces", {})[MARKETPLACE] = {
+        "source": {"source": "github", "repo": REPO, "ref": ref}
+    }
+    enabled = settings.setdefault("enabledPlugins", {})
+    for plugin in plugins:
+        enabled[f"{plugin}@{MARKETPLACE}"] = True
+    path.parent.mkdir(exist_ok=True)
+    path.write_text(json.dumps(settings, indent=2) + "\n")
+    return path
+
+
+def update_claude_md(target):
+    path = target / "CLAUDE.md"
+    block = f"{BEGIN}\n{(ROOT / 'templates' / 'claude-block.md').read_text().strip()}\n{END}"
+    text = path.read_text() if path.exists() else ""
+    pattern = re.compile(re.escape(BEGIN) + ".*?" + re.escape(END), re.S)
+    if pattern.search(text):
+        text = pattern.sub(lambda _: block, text)
+    else:
+        text = (text.rstrip() + "\n\n" if text.strip() else "") + block
+    path.write_text(text.rstrip() + "\n")
+    return path
+
+
+def update_gitignore(target):
+    path = target / ".gitignore"
+    lines = path.read_text().splitlines() if path.exists() else []
+    if ".claude/" in lines:
+        return None
+    missing = [line for line in IGNORES[1:] if line not in lines]
+    if not missing:
+        return None
+    lines += ([""] if lines and lines[-1] else []) + [IGNORES[0]] + missing
+    path.write_text("\n".join(lines) + "\n")
+    return path
+
+
+def copy_workflows(target, ref, ci_workflow, force):
+    written, kept = [], []
+    out = target / ".github" / "workflows"
+    out.mkdir(parents=True, exist_ok=True)
+    for template in sorted((ROOT / "templates" / "workflows").glob("*.yml")):
+        dest = out / template.name
+        if dest.exists() and not force:
+            kept.append(dest)
+            continue
+        text = template.read_text()
+        text = text.replace("__STROPPERS_REF__", ref).replace("__CI_WORKFLOW__", json.dumps(ci_workflow))
+        dest.write_text(text)
+        written.append(dest)
+    return written, kept
+
+
+def current_commit():
+    result = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], capture_output=True, text=True)
+    if result.returncode != 0:
+        sys.exit("stroppers-init: can't read the stroppers commit; pass --workflow-ref")
+    return result.stdout.strip()
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--target", type=Path, default=Path.cwd(), help="repository to wire (default: cwd)")
+    parser.add_argument("--settings-ref", default="main", help="branch or tag of stroppers for .claude/settings.json")
+    parser.add_argument("--workflow-ref", help="commit or tag of stroppers for workflow `uses:` (default: this checkout's HEAD)")
+    parser.add_argument("--ci-workflow", default="CI", help="name of the workflow that runs your tests")
+    parser.add_argument("--with", dest="extras", action="append", default=[], choices=sorted(OPTIONAL_PLUGINS),
+                        help="enable an optional plugin; repeatable")
+    parser.add_argument("--no-workflows", action="store_true", help="skip the GitHub Actions templates")
+    parser.add_argument("--force", action="store_true", help="overwrite workflow files that already exist")
+    args = parser.parse_args(argv)
+
+    target = args.target.resolve()
+    if not (target / ".git").exists():
+        sys.exit(f"stroppers-init: {target} is not a git repository")
+    if target == ROOT:
+        sys.exit("stroppers-init: point --target at the repository you want to wire, not stroppers itself")
+
+    plugins = DEFAULT_PLUGINS + [OPTIONAL_PLUGINS[name] for name in args.extras]
+    changed = [update_settings(target, plugins, args.settings_ref), update_claude_md(target), update_gitignore(target)]
+    kept = []
+    if not args.no_workflows:
+        written, kept = copy_workflows(target, args.workflow_ref or current_commit(), args.ci_workflow, args.force)
+        changed += written
+
+    for path in filter(None, changed):
+        print(f"wrote  {path.relative_to(target)}")
+    for path in kept:
+        print(f"kept   {path.relative_to(target)} (exists; --force to replace)")
+    if not args.no_workflows:
+        print("\nNext: create the GitHub App and secrets, then add your test setup to the workflows. See the stroppers README.")
+
+
+if __name__ == "__main__":
+    main()

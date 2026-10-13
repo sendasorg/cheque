@@ -1,0 +1,29 @@
+# Smoke-checks production after each successful deploy and files an issue on failure.
+# Works with any host that reports GitHub deployment statuses (Vercel does).
+# Installed by stroppers-init.
+name: stroppers verify deploy
+
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  verify:
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.environment == 'Production'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: sogamoso/stroppers/actions/verify-deploy@__STROPPERS_REF__
+        with:
+          url: ${{ github.event.deployment_status.environment_url }}
+          sha: ${{ github.event.deployment.sha }}
+          environment: ${{ github.event.deployment.environment }}
+          github_token: ${{ github.token }}
+          # Paths that must answer 2xx or 3xx. Pick a few that exercise the app, not just static files.
+          paths: |
+            /
