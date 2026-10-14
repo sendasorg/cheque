@@ -7,6 +7,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import { createServer } from 'node:net';
 import { platform, release } from 'node:os';
 import { join, relative } from 'node:path';
+import { detectSession } from './session.mjs';
 
 function npx(repoRoot, args, opts = {}) {
   return spawnSync('npx', ['--no-install', 'playwright', ...args], { cwd: repoRoot, encoding: 'utf8', timeout: opts.timeout ?? 120000, env: opts.env ?? process.env });
@@ -27,7 +28,7 @@ export function doctor(repoRoot, { browser = 'chromium' } = {}) {
   if (!config) return { ...report, status: 'not-applicable', reason: 'the repository has no Playwright configuration' };
   const version = npx(repoRoot, ['--version']);
   if (version.status !== 0) return { ...report, status: 'needs-setup', reason: 'Playwright is not installed in the repository; install its dependencies with the repository package manager', detail: version.stderr.trim() };
-  report.playwright = version.stdout.trim();
+  report.playwright = version.stdout.trim().replace(/^Version /, '');
   const probe = launchProbe(repoRoot, browser);
   report.checks.push(probe);
   if (probe.ok) return { ...report, status: 'ready' };
@@ -179,7 +180,7 @@ export async function runBrowserVerification({ repoRoot, runId, browser = 'chrom
     reason: tests.length === 0 ? `no test results (exit ${code}); see run.log` : null,
     revision,
     worktree_clean: dirty === '',
-    executor: { os: ready.os, browser, browser_version: ready.checks[0]?.browser_version, playwright: ready.playwright, headless, harness: process.env.STROPPERS_HARNESS || null, mode: process.env.CLAUDE_CODE_REMOTE === 'true' || process.env.STROPPERS_MODE === 'cloud' ? 'cloud' : 'local' },
+    executor: { os: ready.os, browser, browser_version: ready.checks[0]?.browser_version, playwright: ready.playwright, headless, harness: detectSession().harness, mode: detectSession().mode },
     port,
     started_at: started.toISOString(),
     finished_at: new Date().toISOString(),

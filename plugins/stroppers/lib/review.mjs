@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { adapterFor, reviewerEnv, runProcess } from './adapters.mjs';
 
+export const DIFF_FILE = '.stroppers-review.diff';
 export const SCHEMA_PATH = new URL('../schemas/findings.schema.json', import.meta.url).pathname;
 
 function git(cwd, ...args) {
@@ -17,7 +18,7 @@ function git(cwd, ...args) {
 export function reviewPrompt({ base, head, contract, constraintsPath, scope }) {
   return [
     'You are an independent reviewer in a fresh session. You are read-only: do not modify files, push, comment, or start other reviews.',
-    `Review exactly the change between base ${base} and head ${head}. Start with \`git diff ${base} ${head}\` and read surrounding code as needed.`,
+    `Review exactly the change between base ${base} and head ${head}. The full diff is in the file ${DIFF_FILE} at the root of your working directory, which is a checkout of the head revision; read it first, then read surrounding code as needed.`,
     scope ? `Scope of the approved change: ${scope}` : '',
     'Approved outcome and acceptance criteria (the delivery contract):',
     '```json',
@@ -57,9 +58,19 @@ export async function runReview({ repoRoot, config, reviewer, implementer, base,
   record.reviewer.auth = auth.ok ? auth.mode : null;
   if (!auth.ok) return finish(outDir, { ...record, status: 'auth-failed', reason: auth.reason, findings: [] });
 
+  // A shared clone of the head commit in a temp directory: the reviewer sees
+  // exactly that revision, and nothing is written to the source repository
+  // (sandboxed implementers such as Codex cannot write to .git).
   const worktree = mkdtempSync(join(tmpdir(), 'stroppers-review-'));
   try {
-    git(repoRoot, 'worktree', 'add', '--detach', '--force', worktree, head_sha);
+    try {
+      git(tmpdir(), 'clone', '--quiet', '--shared', '--no-checkout', repoRoot, worktree);
+      git(worktree, 'checkout', '--quiet', '--detach', head_sha);
+    } catch (e) {
+      return finish(outDir, { ...record, status: 'error', reason: `could not prepare an isolated checkout of ${head_sha}: ${e.message.split('\n')[0]}`, findings: [] });
+    }
+    // The reviewer gets the exact diff as a file, so it needs no shell access.
+    writeFileSync(join(worktree, DIFF_FILE), execFileSync('git', ['diff', '--no-ext-diff', '--no-color', base_sha, head_sha], { cwd: repoRoot, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
     const outputPath = join(outDir, 'reviewer-output.json');
     const cmd = adapter.command({ schemaPath: SCHEMA_PATH, outputPath });
     const prompt = reviewPrompt({ base: base_sha, head: head_sha, contract, constraintsPath, scope });
@@ -77,11 +88,7 @@ export async function runReview({ repoRoot, config, reviewer, implementer, base,
     const status = parsed.output.findings.length ? 'findings' : 'clean';
     return finish(outDir, { ...record, status, verdict: parsed.output.verdict, summary: parsed.output.summary, findings: parsed.output.findings.map((f, i) => ({ id: `${reviewId}#${i + 1}`, ...f, disposition: null })) });
   } finally {
-    try {
-      git(repoRoot, 'worktree', 'remove', '--force', worktree);
-    } catch {
-      rmSync(worktree, { recursive: true, force: true });
-    }
+    rmSync(worktree, { recursive: true, force: true });
   }
 }
 

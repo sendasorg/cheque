@@ -3,7 +3,9 @@
 // repository), and a result index is posted on the PR. Nothing here embeds a
 // token, a local path or an expiring link.
 import { execFileSync } from 'node:child_process';
-import { basename, join } from 'node:path';
+import { copyFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 export const RELEASE_TAG = 'stroppers-evidence';
 
@@ -31,18 +33,23 @@ export function uploadAssets({ repo, runDir, files, runId }) {
   } catch {
     gh(['release', 'create', RELEASE_TAG, '--repo', repo, '--prerelease', '--title', 'Stroppers verification evidence', '--notes', 'Videos, traces and results attached by Stroppers verification runs. Each asset name starts with its run id; the PR result index links to them.']);
   }
+  // GitHub names an asset after the uploaded file, so each file is staged under
+  // its unique run-scoped name first; runs never overwrite each other.
+  const staging = mkdtempSync(join(tmpdir(), 'stroppers-evidence-'));
   const uploaded = [];
-  for (const f of files) {
-    const name = assetName(runId, f);
-    gh(['release', 'upload', RELEASE_TAG, `${join(runDir, f)}#${name}`, '--repo', repo, '--clobber']);
-    uploaded.push({ file: f, name });
+  try {
+    for (const f of files) {
+      const name = assetName(runId, f);
+      copyFileSync(join(runDir, f), join(staging, name));
+      gh(['release', 'upload', RELEASE_TAG, join(staging, name), '--repo', repo]);
+      uploaded.push({ file: f, name });
+    }
+  } finally {
+    rmSync(staging, { recursive: true, force: true });
   }
   // The download URL is read back from GitHub rather than constructed.
   const assets = JSON.parse(gh(['release', 'view', RELEASE_TAG, '--repo', repo, '--json', 'assets'])).assets;
-  return uploaded.map((u) => {
-    const asset = assets.find((a) => basename(a.name) === u.name || a.name === u.name.replace(/[^A-Za-z0-9._-]/g, '.'));
-    return { ...u, url: asset?.url || null };
-  });
+  return uploaded.map((u) => ({ ...u, url: assets.find((a) => a.name === u.name)?.url || null }));
 }
 
 const ICON = { passed: 'passed', failed: 'FAILED', 'not-applicable': 'not applicable', unverified: 'UNVERIFIED' };

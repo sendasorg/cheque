@@ -57,9 +57,9 @@ test('subscription fallback is opt-in globally or per step', () => {
   assert.equal(fallbackAllowed(base({ harness: { fallback: { enabled: true, steps: [] } } }), 'review'), true);
 });
 
-test('reviewer environment strips API-billing keys and marks the reviewer role', () => {
-  const env = reviewerEnv({ ANTHROPIC_API_KEY: 'x', OPENAI_API_KEY: 'y', CODEX_API_KEY: 'z', ANTHROPIC_AUTH_TOKEN: 'w', PATH: '/bin' });
-  assert.deepEqual(Object.keys(env).sort(), ['PATH', 'STROPPERS_ROLE']);
+test('reviewer environment is an allowlist: no API-billing keys or other credentials reach it', () => {
+  const env = reviewerEnv({ ANTHROPIC_API_KEY: 'x', OPENAI_API_KEY: 'y', CODEX_API_KEY: 'z', ANTHROPIC_AUTH_TOKEN: 'w', GH_TOKEN: 'g', STROPPERS_LINEAR_API_KEY: 'l', AWS_SECRET_ACCESS_KEY: 'a', PATH: '/bin', HOME: '/h', CLAUDE_CODE_OAUTH_TOKEN: 'sub' });
+  assert.deepEqual(Object.keys(env).sort(), ['CLAUDE_CODE_OAUTH_TOKEN', 'HOME', 'PATH', 'STROPPERS_ROLE']);
   assert.equal(env.STROPPERS_ROLE, 'reviewer');
 });
 
@@ -103,12 +103,13 @@ async function review(script, over = {}) {
 const finding = '{"severity":"medium","title":"t","body":"b","file":"a.js","line_start":1,"line_end":1,"confidence":0.8,"recommendation":"r","scenario":"s","evidence":"e"}';
 
 test('findings from a reviewer are recorded with head identity and raw output', async () => {
-  const { result, headSha } = await review(`pwd > "$STROPPERS_REVIEW_OUTPUT.cwd"; cat > /dev/null; echo '{"verdict":"needs-attention","summary":"s","findings":[${finding}],"next_steps":[]}' > "$STROPPERS_REVIEW_OUTPUT"`);
+  const { result, headSha } = await review(`pwd > "$STROPPERS_REVIEW_OUTPUT.cwd"; cp .stroppers-review.diff "$STROPPERS_REVIEW_OUTPUT.diff"; cat > /dev/null; echo '{"verdict":"needs-attention","summary":"s","findings":[${finding}],"next_steps":[]}' > "$STROPPERS_REVIEW_OUTPUT"`);
   assert.equal(result.status, 'findings');
   assert.equal(result.head, headSha);
   assert.equal(result.findings[0].disposition, null);
   assert.ok(readFileSync(join(result.record_path, '..', 'prompt.md'), 'utf8').includes('"a equals 2"'));
   assert.notEqual(readFileSync(join(result.record_path, '..', 'reviewer-output.json.cwd'), 'utf8').trim(), '', 'ran in a worktree');
+  assert.match(readFileSync(join(result.record_path, '..', 'reviewer-output.json.diff'), 'utf8'), /\+export const a = 2;/, 'diff handed to the reviewer');
 });
 
 test('a reviewer timeout is recorded as timeout, not as a clean review', async () => {

@@ -4,13 +4,20 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 
-const API_KEY_VARS = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'OPENAI_API_KEY', 'CODEX_API_KEY'];
+// Child environment for a reviewer, built from an allowlist: only what the
+// harness CLI needs to run and to find its own subscription sign-in. API-billing
+// keys and every other credential in the parent (Linear, GitHub, cloud) stay
+// out. The reviewer role marker stops it from delegating another review.
+const REVIEWER_ENV_ALLOW = [
+  'PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TERM', 'TMPDIR', 'TZ',
+  'XDG_CONFIG_HOME', 'XDG_CACHE_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_RUNTIME_DIR',
+  'CODEX_HOME', 'CLAUDE_CONFIG_DIR', 'CLAUDE_CODE_OAUTH_TOKEN',
+  'HTTPS_PROXY', 'HTTP_PROXY', 'NO_PROXY', 'https_proxy', 'http_proxy', 'no_proxy', 'NODE_EXTRA_CA_CERTS', 'SSL_CERT_FILE',
+];
 
-// Child environment for a reviewer: never forwards API-billing keys, marks the
-// reviewer role so the child cannot delegate another cross-harness review.
 export function reviewerEnv(env = process.env) {
-  const out = { ...env, STROPPERS_ROLE: 'reviewer' };
-  for (const k of API_KEY_VARS) delete out[k];
+  const out = { STROPPERS_ROLE: 'reviewer' };
+  for (const k of REVIEWER_ENV_ALLOW) if (env[k] !== undefined) out[k] = env[k];
   return out;
 }
 
@@ -29,7 +36,7 @@ export const ADAPTERS = {
     declares: {
       local: 'claude -p (non-interactive print mode)',
       cloud: 'available inside Claude Code cloud sessions; from another vendor cloud only with a provisioned CLAUDE_CODE_OAUTH_TOKEN',
-      reviewOnly: 'write tools disallowed; read, grep, git diff/show/log and node allowed',
+      reviewOnly: 'Read, Grep and Glob only; no shell, no writes, no network tools; the diff is provided as a file',
       auth: 'claude.ai subscription login or CLAUDE_CODE_OAUTH_TOKEN from `claude setup-token`; API keys are stripped',
       results: 'JSON envelope with structured_output validated against the findings schema',
       checkpointInput: 'prompt carries contract, constraints path, base/head and scope',
@@ -57,8 +64,9 @@ export const ADAPTERS = {
           '--output-format', 'json',
           '--json-schema', schema,
           '--permission-mode', 'dontAsk',
-          '--allowedTools', 'Read,Grep,Glob,Bash(git diff:*),Bash(git show:*),Bash(git log:*),Bash(node:*)',
-          '--disallowedTools', 'Edit,Write,NotebookEdit,WebFetch,WebSearch,Agent',
+          '--tools', 'Read,Grep,Glob',
+          '--allowedTools', 'Read,Grep,Glob',
+          '--disallowedTools', 'Bash,Edit,Write,NotebookEdit,WebFetch,WebSearch,Agent',
         ],
       };
     },

@@ -18,6 +18,7 @@ import { doctor, prepare, runBrowserVerification } from '../lib/playwright.mjs';
 import { uploadAssets, renderIndex, checkPublishable } from '../lib/evidence.mjs';
 import { install, uninstall, installStatus, PACKAGE_VERSION } from '../lib/install.mjs';
 import { writeModelMap } from '../lib/models.mjs';
+import { detectSession } from '../lib/session.mjs';
 
 const USAGE = `stroppers ${PACKAGE_VERSION}
 
@@ -123,8 +124,7 @@ function readInput(file) {
 }
 
 function sessionMode() {
-  if (opt.mode) return opt.mode;
-  return process.env.CLAUDE_CODE_REMOTE === 'true' || process.env.STROPPERS_MODE === 'cloud' ? 'cloud' : 'local';
+  return opt.mode || detectSession().mode;
 }
 
 const commands = {
@@ -181,6 +181,7 @@ const commands = {
     const sub = pos[1];
     const { effective } = sub === 'restore' || sub === 'show' || sub === 'render' ? { effective: null } : config();
     if (sub === 'init') {
+      opt.harness ||= detectSession().harness;
       if (!opt.issue || !opt.contract || !opt.harness) fail('checkpoint init --issue <KEY> --contract <file> --harness <id>', 2);
       const blockers = deliveryBlockers(effective);
       if (blockers.length) fail(`cannot start delivery:\n  ${blockers.join('\n  ')}`, 3);
@@ -263,7 +264,7 @@ const commands = {
   async review() {
     const { effective } = config();
     const c = loadCheckpoint(false);
-    const implementer = opt.implementer || c?.execution?.implementer || harnessForStep(effective, 'implement');
+    const implementer = opt.implementer || c?.execution?.implementer || detectSession().harness || harnessForStep(effective, 'implement');
     const available = opt.available ? opt.available.split(',') : undefined;
     const selection = opt.reviewer ? { harness: opt.reviewer, reason: 'explicit --reviewer' } : selectReviewer({ config: effective, implementer, available });
     if (pos[1] === 'select') return out({ implementer, ...selection });
@@ -321,6 +322,8 @@ const commands = {
     const repo = execFileSync('gh', ['repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner'], { cwd: repoRoot(), encoding: 'utf8' }).trim();
     const files = [...record.videos, ...(record.status === 'failed' ? record.traces : []), 'results.json'];
     const assets = uploadAssets({ repo, runDir, files, runId: opt.run });
+    const unresolved = assets.filter((a) => !a.url);
+    if (unresolved.length) fail(`uploaded assets without a resolvable URL: ${unresolved.map((a) => a.name).join(', ')}; nothing was posted`);
     const criteria = (c?.verification_plan || []).map((p) => ({ id: p.criterion_id, criterion: p.criterion, method: p.method, status: c.outcomes[p.criterion_id]?.status || 'unverified', reason: c.outcomes[p.criterion_id]?.reason || (c.outcomes[p.criterion_id] ? '' : 'not yet run') }));
     const body = renderIndex({ record, criteria, assets, environment: opt.environment });
     const problems = checkPublishable(body);
