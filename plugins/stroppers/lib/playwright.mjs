@@ -164,11 +164,11 @@ export function cleanupAbandoned(artifactsRoot) {
     const dir = join(artifactsRoot, run);
     const marker = join(dir, 'running.json');
     if (!existsSync(marker) || existsSync(join(dir, 'record.json'))) continue;
-    const { pgid } = JSON.parse(readFileSync(marker, 'utf8'));
-    // Only signal the group if its leader is still a Playwright run: after a
-    // reboot the id may belong to an unrelated process.
+    const { pgid, config } = JSON.parse(readFileSync(marker, 'utf8'));
+    // Only signal the group if its leader is still this run: its command line
+    // names this run's own wrapper config. A reused id belongs to something else.
     const leader = spawnSync('ps', ['-o', 'command=', '-p', String(pgid)], { encoding: 'utf8' }).stdout || '';
-    if (/playwright/.test(leader)) {
+    if (config && leader.includes(config)) {
       try {
         process.kill(-pgid, 'SIGTERM');
       } catch {}
@@ -198,7 +198,7 @@ export async function runBrowserVerification({ repoRoot, runId, browser = 'chrom
   const code = await new Promise((resolve) => {
     const child = spawn('npx', args, { cwd: repoRoot, env: { ...process.env, PORT: String(port), STROPPERS_RUN_ID: runId, CI: '1' }, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
     let log = '';
-    writeFileSync(join(outputDir, 'running.json'), JSON.stringify({ pgid: child.pid, started_at: new Date().toISOString() }));
+    writeFileSync(join(outputDir, 'running.json'), JSON.stringify({ pgid: child.pid, config: wrapper, started_at: new Date().toISOString() }));
     child.stdout.on('data', (d) => (log += d));
     child.stderr.on('data', (d) => (log += d));
     const timer = setTimeout(() => {

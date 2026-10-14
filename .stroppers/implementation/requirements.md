@@ -504,7 +504,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-134.2 | Deliver README, operator guide, update/removal instructions | verified | file: README, docs/configuration.md, operator usage in README |
 | R-134.3 | Deliver pilot change set and validation report with remaining limitations | in-progress | why: pilot PRs #3 and #4; validation report final after re-review |
 | R-135.1 | Native validation and portable checkpoints in scope; no hosting; no runtime/recovery overclaims | verified | file: README unattended expectations; no overclaims in matrix |
-| R-136.1 | Root README with exact tested instructions, aligned to implementation | in-progress | why: README aligned to 0.1.10; clean-machine replay pending |
+| R-136.1 | Root README with exact tested instructions, aligned to implementation | in-progress | why: README aligned to 0.1.11; clean-machine replay pending |
 | R-137.1 | README: purpose, Pstack role, specialists, harnesses, plugin vs runtime vs Playwright | verified | file: README What does what |
 | R-137.2 | README: prerequisites, environments, subscriptions, cloud limits, unsupported paths | verified | file: README Requirements |
 | R-137.3 | README: install/config commands, pinned deps, credential setup, auth | verified | file: README Set up |
