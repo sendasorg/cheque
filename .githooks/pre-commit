@@ -1,0 +1,26 @@
+#!/usr/bin/env sh
+#
+# Checks the plugin version before every commit. CI runs the same
+# scripts/check-version.mjs; running it here catches a missing bump before
+# the push.
+#
+# Enable once per clone (git does not version .git/hooks):
+#
+#     git config core.hooksPath .githooks
+#
+# Bypass for one commit:  git commit --no-verify
+#
+# Compares against where this branch left main, not the previous commit,
+# because a branch bumps once however many commits touch plugins/cheque/.
+# Skipped when origin/main isn't known locally.
+
+set -e
+
+repo_root=$(git rev-parse --show-toplevel)
+
+if base=$(git merge-base HEAD origin/main 2>/dev/null); then
+  if ! node "$repo_root/scripts/check-version.mjs" "$base" --staged; then
+    echo "pre-commit: fix the version above, or commit with --no-verify." >&2
+    exit 1
+  fi
+fi

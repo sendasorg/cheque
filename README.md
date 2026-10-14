@@ -300,10 +300,28 @@ tested.
 npm test               # unit and integration tests (node --test)
 npm run vendor:check   # vendored sources match their pinned commits
 npm run validate       # Claude plugin and marketplace manifests
+npm run version:check  # plugin version bumped if plugins/cheque/ changed since main
 ```
 
-Bump the version in both plugin manifests and the marketplace together; a
-test enforces it.
+To check the version before every commit, point git at the versioned hooks
+once per clone: `git config core.hooksPath .githooks`.
+
+### Releasing
+
+A pull request that changes `plugins/cheque/` bumps `version` to the same value
+in both plugin manifests and the Claude Code marketplace entry: MAJOR for a
+breaking change (a renamed or removed skill, command, config key or environment
+variable, or a renamed plugin), MINOR for a new capability, PATCH otherwise.
+Harnesses refresh an installed plugin only when its version changes, so an
+unbumped change never reaches anyone. CI fails a pull request that changes
+`plugins/cheque/` without a bump, or that reuses a tagged version; if another
+pull request takes the version first, rebase and bump again. Changes outside
+`plugins/cheque/` (docs, tests, CI) need no bump. The install command in Set
+up pins a tag; move it to the new version in the same pull request.
+
+When the bump lands on `main`, CI tags the commit `vX.Y.Z` and publishes a
+GitHub release with generated notes. Never tag by hand. For a major release,
+edit the release notes afterwards to say what broke and how to migrate.
 
 ## License and attribution
 

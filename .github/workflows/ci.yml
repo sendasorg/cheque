@@ -1,16 +1,133 @@
 name: CI
+
+# Tests every pull request and main, and enforces versioning: a change under
+# plugins/cheque/ must bump the plugin version in the same pull request, and
+# every version that lands on main is tagged and released. A change that
+# reaches main without a bump would never reach installed copies, which
+# harnesses refresh only on a new version.
+
 on:
   pull_request:
   push:
     branches: [main]
+
+# Read-only by default; only the release job below can write.
+permissions:
+  contents: read
+
+concurrency:
+  # A newer push to a pull request supersedes the older run. On main, each push
+  # gets its own group: GitHub cancels a queued run whenever a newer one joins
+  # the same group, whatever cancel-in-progress says, and a dropped run would
+  # leave that push's range unchecked and its version untagged.
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The version check reads the manifest on the base branch and the tags.
+          fetch-depth: 0
+          # This job only reads; don't leave the token in the git config.
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: git config --global user.email ci@example.invalid && git config --global user.name ci
       - run: npm test
       - run: npm run vendor:check
+
+      # The rules live in scripts/check-version.mjs, shared with the
+      # pre-commit hook so the two can't drift.
+      - name: Require a new version when plugins/cheque/ or the plugin name changed
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          # A pull request compares against its base branch as it is now, not
+          # as it was when the pull request last changed: if another pull
+          # request already took this version, the two collide here, before the
+          # merge, not as a red run on main after it.
+          if [ -n "$BASE_REF" ]; then
+            BEFORE=$(git rev-parse "origin/$BASE_REF")
+          else
+            BEFORE=$PUSH_BEFORE
+          fi
+          # A newly created branch has no previous commit to compare against.
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = 0000000000000000000000000000000000000000 ]; then
+            exit 0
+          fi
+          node scripts/check-version.mjs "$BEFORE" --github
+
+  # Tag and release every version as it lands on main, so an installed copy's
+  # version maps to the commit that shipped it. Runs only after the checks pass.
+  release:
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history brings the existing tags, so a version is tagged once.
+          fetch-depth: 0
+
+      - name: Tag and release a new version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          version() {
+            git show "$1:plugins/cheque/.claude-plugin/plugin.json" | node -e 'let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => console.log(JSON.parse(s).version ?? ""))'
+          }
+          tag="v$(version HEAD)"
+          # Only the push that changes the version releases it. Pushes to main
+          # don't wait for each other, so a docs push landing right after a
+          # bump could otherwise tag its own commit first. The version check
+          # already rejects a version whose tag exists, so the existing-tag
+          # paths below only meet reruns and races on this same commit.
+          if [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ] &&
+            [ "v$(version "$BEFORE")" = "$tag" ]; then
+            echo "This push didn't change the version ($tag); nothing to release"
+            exit 0
+          fi
+          # Tag and release are checked separately, so a rerun after a failed
+          # release step still publishes the release for a tag already pushed.
+          if git rev-parse --quiet --verify "refs/tags/$tag" >/dev/null; then
+            echo "$tag already exists"
+          else
+            # Annotated, like a tag made by hand; unsigned, since CI can't hold
+            # a signing key.
+            git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              tag -a "$tag" -m "$tag" "$GITHUB_SHA"
+            # Runs on main don't cancel each other, so two can race for the
+            # same version; the one that loses finds the tag already there.
+            if git push origin "refs/tags/$tag"; then
+              echo "Tagged $tag at ${GITHUB_SHA:0:7}"
+            elif git ls-remote --exit-code origin "refs/tags/$tag" >/dev/null 2>&1; then
+              echo "$tag was created by a concurrent run"
+            else
+              exit 1
+            fi
+          fi
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists"
+          else
+            # Notes list the pull requests merged since the previous tag. A
+            # major release also needs a line on what broke; add it to the
+            # release by hand after it is created.
+            if gh release create "$tag" --title "$tag" --generate-notes --verify-tag; then
+              echo "Released $tag"
+            elif gh release view "$tag" >/dev/null 2>&1; then
+              echo "Release $tag was created by a concurrent run"
+            else
+              exit 1
+            fi
+          fi
