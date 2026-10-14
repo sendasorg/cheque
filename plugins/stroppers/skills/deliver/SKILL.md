@@ -36,6 +36,7 @@ Out-of-scope work discovered on the way pauses that unit: post a contract revisi
 ## Continuing, status, pause, revoke
 
 - **Continue** (fresh session, other harness, cloud): find the latest `stroppers:checkpoint` comment with `stroppers linear show`, pipe its body to `stroppers checkpoint restore --file -`, take the lease with `stroppers checkpoint lease <session-id>`, reconcile every pending action against GitHub/Linear/the deploy target before retrying it, re-verify approval, then continue from the recorded stage. Counters and findings carry over; never reset them.
+- A restored `blocked` reason is the previous session's note, not a fact. Re-check its condition with the helper (`doctor`, `approval verify`, the failing check). If the condition no longer holds, record the new stage and continue; do not ask the operator to repeat an action the helper now verifies. Approval in particular is decided by `stroppers approval verify` alone: `approved` with no `doctor` blockers is authoritative.
 - **Status**: summarize stage, head, approval, outcomes and blockers from `stroppers checkpoint show` in a few lines.
 - **Pause**: finish the current atomic step, post the checkpoint, stop.
 - **Revoke** (owner comments `stroppers revoke` or cancels the issue): stop new actions, checkpoint, report any external action that already completed.
