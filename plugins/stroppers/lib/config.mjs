@@ -54,7 +54,9 @@ export const SCHEMA = {
       keyPattern: HARNESS_ID,
       value: {
         type: 'map',
-        keys: { enabled: bool, command: { type: 'list', item: str }, fake: bool },
+        // An executable reviewer definition decides what runs as the reviewer
+        // and how isolated it is, so only private layers may set it.
+        keys: { enabled: bool, command: { type: 'list', item: str, private: true }, fake: { type: 'boolean', private: true } },
       },
     },
     linear: {
@@ -137,6 +139,10 @@ export function validate(value, schema = SCHEMA, path = '', layer = 'repo', erro
     if (!schema.nullable && schema.type !== 'map' && schema.type !== 'dict') errors.push(`${at}: must not be empty`);
     return errors;
   }
+  if (schema.private && schema.type !== 'map' && !['packaged', 'operator', 'local'].includes(layer)) {
+    errors.push(`${at}: may only be set in private operator or repo-local config, not in the ${layer} layer`);
+    return errors;
+  }
   switch (schema.type) {
     case 'map':
     case 'dict': {
@@ -172,6 +178,7 @@ export function validate(value, schema = SCHEMA, path = '', layer = 'repo', erro
       else if (value < schema.min || value > schema.max) errors.push(`${at}: must be between ${schema.min} and ${schema.max}`);
       break;
     case 'boolean':
+    case undefined:
       if (typeof value !== 'boolean') errors.push(`${at}: expected true or false`);
       break;
     case 'enum':

@@ -4,8 +4,8 @@
 // uninstall never removes shared documents (constraints, glossary, ADRs,
 // verification skills) even if a Stroppers workflow helped create them.
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, readdirSync, rmdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync, readdirSync, rmdirSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
 
 export const PACKAGE_VERSION = JSON.parse(readFileSync(new URL('../.claude-plugin/plugin.json', import.meta.url), 'utf8')).version;
 const TEMPLATES = new URL('../templates/', import.meta.url).pathname;
@@ -37,9 +37,36 @@ function plan({ cloudEntry, version, ref }) {
   return items;
 }
 
+// Every path Stroppers can ever manage. The manifest lives in the repository,
+// so its entries are checked against this list before anything is touched.
+const MANAGEABLE = new Map(plan({ cloudEntry: true, version: '0', ref: null }).map((i) => [i.path, i.kind]));
+
+// Every component of a managed path must be a real directory or file inside
+// the repository; a symlinked parent could otherwise redirect a write or delete.
+function assertNoSymlinks(repo, rel) {
+  let cur = repo;
+  for (const part of rel.split('/')) {
+    cur = join(cur, part);
+    let st;
+    try {
+      st = lstatSync(cur);
+    } catch (e) {
+      if (e.code === 'ENOENT') return;
+      throw e;
+    }
+    if (st.isSymbolicLink()) throw new Error(`${relative(repo, cur)} is a symlink; refusing to act on ${rel}`);
+  }
+}
+
 function readManifest(repo) {
   const p = join(repo, MANIFEST);
-  return existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')) : { version: null, items: [] };
+  if (!existsSync(p)) return { version: null, items: [] };
+  const m = JSON.parse(readFileSync(p, 'utf8'));
+  for (const item of m.items || []) {
+    if (MANAGEABLE.get(item.path) !== item.kind) throw new Error(`${MANIFEST} lists ${item.path} (${item.kind}), which Stroppers never manages; refusing to act on it`);
+    assertNoSymlinks(repo, item.path);
+  }
+  return m;
 }
 
 function writeManifest(repo, m) {
@@ -75,6 +102,7 @@ export function install(repo, { cloudEntry = false, version = PACKAGE_VERSION, r
   const wantCloud = cloudEntry || manifest.items.some((i) => i.path.endsWith('skills/stroppers/SKILL.md'));
 
   for (const item of plan({ cloudEntry: wantCloud, version, ref: ref || manifest.ref })) {
+    assertNoSymlinks(repo, item.path);
     const abs = join(repo, item.path);
     const exists = existsSync(abs);
     const current = exists ? readFileSync(abs, 'utf8') : null;

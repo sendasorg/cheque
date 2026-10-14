@@ -36,6 +36,10 @@ export async function runReview({ repoRoot, config, reviewer, implementer, base,
   if (env.STROPPERS_ROLE === 'reviewer') {
     return { status: 'refused', reason: 'this session is a delegated reviewer; nested cross-harness review is disabled' };
   }
+  // Independence is enforced here as well as in selection: the implementer
+  // reviews its own change only under an explicit same-harness policy.
+  if (reviewer === implementer && config.harness.review?.policy !== 'same-harness')
+    return { status: 'refused', reason: `${reviewer} implemented this change; a same-harness review needs harness.review.policy: same-harness` };
   const adapter = adapterFor(config, reviewer);
   const childEnv = reviewerEnv(env);
   const startedAt = new Date().toISOString();
@@ -70,7 +74,10 @@ export async function runReview({ repoRoot, config, reviewer, implementer, base,
       return finish(outDir, { ...record, status: 'error', reason: `could not prepare an isolated checkout of ${head_sha}: ${e.message.split('\n')[0]}`, findings: [] });
     }
     // The reviewer gets the exact diff as a file, so it needs no shell access.
-    writeFileSync(join(worktree, DIFF_FILE), execFileSync('git', ['diff', '--no-ext-diff', '--no-color', base_sha, head_sha], { cwd: repoRoot, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
+    // The reviewed commit is untrusted: whatever it put at that path (a symlink
+    // to a user file, say) is removed, and the diff is created exclusively.
+    rmSync(join(worktree, DIFF_FILE), { force: true, recursive: true });
+    writeFileSync(join(worktree, DIFF_FILE), execFileSync('git', ['diff', '--no-ext-diff', '--no-color', base_sha, head_sha], { cwd: repoRoot, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }), { flag: 'wx' });
     const outputPath = join(outDir, 'reviewer-output.json');
     const cmd = adapter.command({ schemaPath: SCHEMA_PATH, outputPath });
     const prompt = reviewPrompt({ base: base_sha, head: head_sha, contract, constraintsPath, scope });
@@ -85,7 +92,9 @@ export async function runReview({ repoRoot, config, reviewer, implementer, base,
     if (parsed.status !== 'ok') return finish(outDir, { ...record, status: parsed.status, reason: parsed.detail, findings: [] });
     const problems = validateFindings(parsed.output);
     if (problems.length) return finish(outDir, { ...record, status: 'error', reason: `reviewer output failed validation: ${problems.join('; ')}`, findings: [] });
-    const status = parsed.output.findings.length ? 'findings' : 'clean';
+    // Clean means the reviewer approved with nothing to fix. A needs-attention
+    // verdict without findings is an incomplete review, not a clean one.
+    const status = parsed.output.findings.length ? 'findings' : parsed.output.verdict === 'approve' ? 'clean' : 'incomplete';
     return finish(outDir, { ...record, status, verdict: parsed.output.verdict, summary: parsed.output.summary, findings: parsed.output.findings.map((f, i) => ({ id: `${reviewId}#${i + 1}`, ...f, disposition: null })) });
   } finally {
     rmSync(worktree, { recursive: true, force: true });

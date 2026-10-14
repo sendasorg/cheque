@@ -73,3 +73,18 @@ the exact revision without requiring a workspace workflow change. An optional
 authority. Verified against the Linear GraphQL schema (`Comment.botActor`,
 `Comment.onBehalfOf`, `Comment.editedAt`); live attribution of connector
 writes remains to be demonstrated with a read-only key. Serves R-087, R-088.
+
+## D-009 Direct pushes to protected main stop
+
+`main` in this repository requires a pull request with one approving review
+(not enforced for admins). Early commits were pushed directly by the
+implementing session with admin bypass before this was noticed. From commit
+`8853749` onward all work goes through `stroppers/release-0.1` and a PR. The
+earlier commits are left as they are rather than rewritten.
+
+## D-010 Release PR is squash-merged
+
+Two docs commits on the release branch named the operator's Linear
+workspaces before the public-tree scan generalized them. Squash-merging the
+release PR keeps those strings out of `main`'s history. The branch itself is
+deleted after merge.

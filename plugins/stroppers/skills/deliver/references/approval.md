@@ -10,6 +10,15 @@ search other workspaces, and never use whichever account happens to be signed in
 - `stroppers approval verify` reads the issue with the read-only key named by `linear.credential_env` and checks, in order: the key authenticates to the bound workspace; the issue is in the bound team; the latest contract comment hashes to the checkpoint's contract revision; an owner comment `stroppers approve <revision>` exists after it, written directly by a configured owner (matched by Linear user id, never display name), not by an integration or on someone's behalf, and not edited.
 - If the configured team uses an "approval needed" status (`linear.approval_state`), move the issue there after posting the contract. That status is a marker only.
 
+## Trusting the result
+
+When `stroppers doctor` reports no Linear blockers, the verification key is
+read-only (or not an owner's), so `approved` from `stroppers approval verify`
+is authoritative. Do not second-guess it from comment history: older comments
+that predate this setup cannot satisfy the verifier unless they name the
+current contract revision after it was posted. The approved contract, not the
+issue description, defines the work.
+
 ## What the operator does
 
 Read the contract comment and, if it is right, comment exactly the line it shows:

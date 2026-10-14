@@ -128,6 +128,33 @@ test('a delegated reviewer cannot start another review', async () => {
   assert.equal(result.status, 'refused');
 });
 
+test('a needs-attention verdict with no findings is incomplete, not clean', async () => {
+  const { result } = await review(`cat > /dev/null; echo '{"verdict":"needs-attention","summary":"could not finish","findings":[],"next_steps":[]}' > "$STROPPERS_REVIEW_OUTPUT"`);
+  assert.equal(result.status, 'incomplete');
+});
+
+test('the implementer cannot review its own change without the same-harness policy', async () => {
+  const { repo, baseSha, headSha } = fixture();
+  const r = await runReview({ repoRoot: repo, config: base(), reviewer: 'codex', implementer: 'codex', base: baseSha, head: headSha, contract: {}, stateDir: join(repo, '.s'), env: { PATH: process.env.PATH } });
+  assert.equal(r.status, 'refused');
+});
+
+test('a committed symlink at the diff path cannot redirect the diff write', async () => {
+  const { symlinkSync, writeFileSync: w } = await import('node:fs');
+  const victim = join(tempDir(), 'victim.txt');
+  w(victim, 'keep me');
+  const repo = tempRepo({ 'a.js': '1\n' });
+  const baseSha = git(repo, 'rev-parse', 'HEAD');
+  symlinkSync(victim, join(repo, '.stroppers-review.diff'));
+  git(repo, 'add', '-A');
+  git(repo, 'commit', '-qm', 'symlink');
+  const headSha = git(repo, 'rev-parse', 'HEAD');
+  const bin = tempDir();
+  const cmd = fakeReviewer(bin, 'third', `cat > /dev/null; echo '{"verdict":"approve","summary":"ok","findings":[],"next_steps":[]}' > "$STROPPERS_REVIEW_OUTPUT"`);
+  await runReview({ repoRoot: repo, config: base({ adapters: { third: { enabled: true, command: [cmd], fake: true } } }), reviewer: 'third', implementer: 'claude-code', base: baseSha, head: headSha, contract: {}, stateDir: join(repo, '.s'), env: { PATH: process.env.PATH } });
+  assert.equal(readFileSync(victim, 'utf8'), 'keep me');
+});
+
 test('a review is current only for the head it reviewed', async () => {
   const { result, headSha } = await review(`cat > /dev/null; echo '{"verdict":"approve","summary":"ok","findings":[],"next_steps":[]}' > "$STROPPERS_REVIEW_OUTPUT"`);
   assert.equal(result.status, 'clean');
