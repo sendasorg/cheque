@@ -1,23 +1,33 @@
 #!/usr/bin/env bash
 # Stand-in for the gh CLI. Logs every call to $CALLS and answers reads from
-# FAKE_ISSUE, FAKE_PR, FAKE_PR_LIST and, for `gh api`, FAKE_API_ISSUE,
-# FAKE_COMMENTS, FAKE_REVIEWS and FAKE_LINE_COMMENTS (JSON strings).
+# FAKE_ISSUE, FAKE_PR and FAKE_PR_LIST, and for `gh api` from FAKE_API_ISSUE,
+# FAKE_COMMENTS, FAKE_REVIEWS, FAKE_LINE_COMMENTS and FAKE_EDITOR (JSON
+# strings). FAKE_WRITERS lists the logins with write access.
 echo "gh $*" >> "$CALLS"
 query=""
 args=("$@")
 for i in "${!args[@]}"; do [ "${args[$i]}" = -q ] && query=${args[$((i + 1))]}; done
 answer() { if [ -n "$query" ]; then jq -r "$query" <<<"$1"; else echo "$1"; fi; }
-default_issue='{"title":"t","body":"b"}'
+
 if [ "$1" = api ]; then
-  path=${*: -1}
+  if [ "$2" = graphql ]; then
+    answer "{\"data\":{\"repository\":{\"issue\":${FAKE_EDITOR:-{\"lastEditedAt\":null\}}}}}"
+    exit 0
+  fi
+  path=${args[*]: -1}
+  [ -n "$query" ] && path=$2
   case $path in
+    */collaborators/*/permission)
+      login=${path%/permission}; login=${login##*/}
+      if [[ " ${FAKE_WRITERS:-} " == *" $login "* ]]; then answer '{"permission":"write"}'; else answer '{"permission":"read"}'; fi ;;
     */pulls/*/comments) echo "${FAKE_LINE_COMMENTS:-[]}" ;;
     */reviews) echo "${FAKE_REVIEWS:-[]}" ;;
     */comments) echo "${FAKE_COMMENTS:-[]}" ;;
-    */issues/*) echo "${FAKE_API_ISSUE:-$default_issue}" ;;
+    */issues/*) echo "${FAKE_API_ISSUE:-{\"title\":\"t\",\"body\":\"b\"\}}" ;;
   esac
   exit 0
 fi
+
 case "$1 $2" in
   "repo view") answer '{"nameWithOwner":"acme/app"}' ;;
   "issue view") answer "$FAKE_ISSUE" ;;

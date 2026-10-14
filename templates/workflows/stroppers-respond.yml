@@ -20,7 +20,8 @@ permissions:
 
 jobs:
   respond:
-    # Run only for reviews from people with a stake in the repo, and for red CI
+    # Run only for reviews from people with a stake in the repo (the guard then
+    # checks actual write access before showing the agent anything), and for red CI
     # on agent branches from this repository. Skip the agent's own activity and approvals.
     if: >-
       github.event.sender.login != format('{0}[bot]', vars.STROPPERS_APP_SLUG) &&

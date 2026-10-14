@@ -11,9 +11,27 @@ repo=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 context="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/stroppers-context-$number.md"
 round=""
 
-# Only these authors' words reach the agent. Labeling an issue ready-for-agent
-# vouches for its body; comments and reviews have to earn it by association.
-trusted='select(.author_association == "OWNER" or .author_association == "MEMBER" or .author_association == "COLLABORATOR")'
+# Only people with write access to this repo get their words in front of the
+# agent. Labeling an issue ready-for-agent vouches for its body as written then.
+declare -A can_write=()
+writes() {
+  if [ -z "${can_write[$1]:-}" ]; then
+    case $(gh api "repos/$repo/collaborators/$1/permission" -q .permission 2>/dev/null) in
+      admin | maintain | write) can_write[$1]=yes ;;
+      *) can_write[$1]=no ;;
+    esac
+  fi
+  [ "${can_write[$1]}" = yes ]
+}
+# Reads a JSON array of comments or reviews and keeps those whose author can write.
+trusted_only() {
+  local items login writers=()
+  items=$(cat)
+  while read -r login; do
+    [ -n "$login" ] && writes "$login" && writers+=("$login")
+  done < <(jq -r '.[].user.login' <<<"$items" | sort -u)
+  jq --args '[.[] | select(.user.login as $l | $ARGS.positional | index($l))]' "${writers[@]}" <<<"$items"
+}
 
 skip() { echo "stroppers: skipping: $*" >&2; echo "skip=true"; exit 0; }
 has_label() { jq -e --arg l "$2" 'any(.labels[]; .name == $l)' <<<"$1" >/dev/null; }
@@ -47,9 +65,22 @@ case $mode in
       skip "$branch already exists; its PR belongs to the respond loop"
     fi
 
+    # The label vouches for the body as the labeler read it. An edit since then
+    # by someone without write access isn't covered.
+    # shellcheck disable=SC2016 # $owner, $name, $number are GraphQL variables
+    editor=$(gh api graphql -F owner="${repo%/*}" -F name="${repo#*/}" -F number="$number" -f query='
+      query($owner: String!, $name: String!, $number: Int!) {
+        repository(owner: $owner, name: $name) { issue(number: $number) { lastEditedAt editor { login } } }
+      }' -q '.data.repository.issue | select(.lastEditedAt != null) | .editor.login // "ghost"')
+    if [ -n "$editor" ] && ! writes "$editor"; then
+      gh issue edit "$number" --remove-label ready-for-agent --add-label needs-human >/dev/null
+      gh issue comment "$number" --body "@$editor, who doesn't have write access, last edited this issue, so the agent won't build from it. Someone with write access should re-read it, make the latest edit, and label it ready-for-agent again." >/dev/null
+      skip "issue #$number was last edited by $editor, who can't write to $repo"
+    fi
+
     {
       gh api "repos/$repo/issues/$number" | jq -r '"# \(.title)\n\n\(.body // "")"'
-      api "issues/$number/comments" | jq -r ".[] | $trusted | \"\n## Comment from @\(.user.login)\n\n\(.body)\""
+      api "issues/$number/comments" | trusted_only | jq -r '.[] | "\n## Comment from @\(.user.login)\n\n\(.body)"'
     } > "$context"
 
     gh issue edit "$number" --remove-label ready-for-agent --add-label agent-working >/dev/null
@@ -80,13 +111,13 @@ case $mode in
     round=$((done_rounds + 1))
 
     {
-      echo "# Review feedback on PR #$number from trusted authors"
-      api "pulls/$number/reviews" |
-        jq -r ".[] | $trusted | select((.body // \"\") != \"\") | \"\n## Review (\(.state)) from @\(.user.login)\n\n\(.body)\""
-      api "pulls/$number/comments" |
-        jq -r ".[] | $trusted | \"\n## Line comment \(.id) from @\(.user.login) on \(.path):\(.line // .original_line)\n\n\(.body)\""
-      api "issues/$number/comments" |
-        jq -r ".[] | $trusted | \"\n## Comment from @\(.user.login)\n\n\(.body)\""
+      echo "# Review feedback on PR #$number from people with write access"
+      api "pulls/$number/reviews" | trusted_only |
+        jq -r '.[] | select((.body // "") != "") | "\n## Review (\(.state)) from @\(.user.login)\n\n\(.body)"'
+      api "pulls/$number/comments" | trusted_only |
+        jq -r '.[] | "\n## Line comment \(.id) from @\(.user.login) on \(.path):\(.line // .original_line)\n\n\(.body)"'
+      api "issues/$number/comments" | trusted_only |
+        jq -r '.[] | "\n## Comment from @\(.user.login)\n\n\(.body)"'
     } > "$context"
 
     gh label create "agent-round-$round" --color ededed --description "Agent respond rounds used on this PR" --force >/dev/null
