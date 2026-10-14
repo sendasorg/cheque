@@ -44,7 +44,7 @@ const USAGE = `stroppers ${PACKAGE_VERSION}
   review run --base <ref> --head <ref> [--reviewer <harness>] [--implementer <harness>]
   browser doctor|prepare|run [--grep <pattern>]
   evidence publish --run <run-id> --pr <number> [--environment <text>]
-  install|update [--cloud-entry] | uninstall | install-status   (in the target repository)
+  install|update [--cloud-entry] [--ref <git ref>] | uninstall | install-status   (in the target repository)
 
 Options: --repo <path> (default: git toplevel of cwd), --json`;
 
@@ -59,7 +59,7 @@ const { values: opt, positionals: pos } = parseArgs({
     status: { type: 'string' }, revision: { type: 'string' }, evidence: { type: 'string', multiple: true }, note: { type: 'string' },
     result: { type: 'string' }, disposition: { type: 'string' }, phase: { type: 'string' }, reviewer: { type: 'string' }, implementer: { type: 'string' },
     available: { type: 'string' }, repository: { type: 'string' }, environment: { type: 'string' }, grep: { type: 'string' }, run: { type: 'string' },
-    pr: { type: 'string' }, 'cloud-entry': { type: 'boolean' }, stage: { type: 'string' }, help: { type: 'boolean' },
+    pr: { type: 'string' }, 'cloud-entry': { type: 'boolean' }, ref: { type: 'string' }, stage: { type: 'string' }, help: { type: 'boolean' },
   },
 });
 
@@ -339,10 +339,10 @@ const commands = {
   },
 
   install() {
-    out(install(repoRoot(), { cloudEntry: opt['cloud-entry'] }));
+    out(install(repoRoot(), { cloudEntry: opt['cloud-entry'], ref: opt.ref }));
   },
   update() {
-    out(install(repoRoot(), { cloudEntry: opt['cloud-entry'] }));
+    out(install(repoRoot(), { cloudEntry: opt['cloud-entry'], ref: opt.ref }));
   },
   uninstall() {
     out(uninstall(repoRoot()));

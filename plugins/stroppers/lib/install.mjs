@@ -23,8 +23,8 @@ function template(name, vars = {}) {
 // `file`: created when absent; updated only while unmodified.
 // `seed`: created once, then owned by the repository (never updated or removed).
 // `block`: a marked section inside a shared file.
-function plan({ cloudEntry, version }) {
-  const vars = { version, repo_url: 'https://github.com/sogamoso/stroppers' };
+function plan({ cloudEntry, version, ref }) {
+  const vars = { version, ref: ref || `v${version}`, repo_url: 'https://github.com/sogamoso/stroppers' };
   const items = [
     { path: '.stroppers/config.yaml', kind: 'seed', content: template('config.yaml') },
     { path: '.stroppers/README.md', kind: 'file', content: template('stroppers-readme.md', vars) },
@@ -67,14 +67,14 @@ function removeBlock(existing) {
   return before + existing.slice(end + BLOCK_END.length + 1);
 }
 
-export function install(repo, { cloudEntry = false, version = PACKAGE_VERSION } = {}) {
+export function install(repo, { cloudEntry = false, version = PACKAGE_VERSION, ref = null } = {}) {
   const manifest = readManifest(repo);
   const recorded = Object.fromEntries(manifest.items.map((i) => [i.path, i]));
   const report = { created: [], updated: [], unchanged: [], conflicts: [], kept: [] };
   const items = [];
   const wantCloud = cloudEntry || manifest.items.some((i) => i.path.endsWith('skills/stroppers/SKILL.md'));
 
-  for (const item of plan({ cloudEntry: wantCloud, version })) {
+  for (const item of plan({ cloudEntry: wantCloud, version, ref: ref || manifest.ref })) {
     const abs = join(repo, item.path);
     const exists = existsSync(abs);
     const current = exists ? readFileSync(abs, 'utf8') : null;
@@ -121,7 +121,7 @@ export function install(repo, { cloudEntry = false, version = PACKAGE_VERSION } 
       if (prior) items.push(prior);
     }
   }
-  writeManifest(repo, { version, installed_at: manifest.installed_at || new Date().toISOString(), updated_at: new Date().toISOString(), items });
+  writeManifest(repo, { version, ref: ref || manifest.ref || null, installed_at: manifest.installed_at || new Date().toISOString(), updated_at: new Date().toISOString(), items });
   return report;
 }
 

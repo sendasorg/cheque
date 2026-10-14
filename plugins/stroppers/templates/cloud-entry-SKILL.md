@@ -13,9 +13,9 @@ over to its entry point.
 2. Otherwise make the pinned package available:
 
    ```sh
-   STROPPERS_HOME="${STROPPERS_HOME:-$HOME/.cache/stroppers/{{version}}}"
+   STROPPERS_HOME="${STROPPERS_HOME:-$HOME/.cache/stroppers/{{ref}}}"
    [ -f "$STROPPERS_HOME/plugins/stroppers/skills/deliver/SKILL.md" ] || \
-     git clone --depth 1 --branch v{{version}} {{repo_url}} "$STROPPERS_HOME"
+     git clone --depth 1 --branch "${STROPPERS_REF:-{{ref}}}" {{repo_url}} "$STROPPERS_HOME"
    ```
 
    If the clone fails (no network or no access), stop and report the blocker:
