@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { checkPublishable, checkArtifact, publishableSummary, assetName, renderIndex } from '../plugins/stroppers/lib/evidence.mjs';
-import { runStatus } from '../plugins/stroppers/lib/playwright.mjs';
+import { runStatus, treeChanges } from '../plugins/stroppers/lib/playwright.mjs';
 import { install, uninstall } from '../plugins/stroppers/lib/install.mjs';
 import { tempDir, tempRepo, write } from './helpers.mjs';
 
@@ -73,4 +73,13 @@ test('install and uninstall refuse a symlinked parent of a managed path', async 
   symlinkSync(outside, join(repo, '.agents/skills/stroppers'));
   assert.throws(() => uninstall(repo), /symlink/);
   assert.equal(r(join(outside, 'SKILL.md'), 'utf8'), 'external');
+});
+
+test('untracked files make the tree unclean even when git hides them from status', async () => {
+  const { git } = await import('./helpers.mjs');
+  const repo = tempRepo({ 'a.js': '1\n' });
+  git(repo, 'config', 'status.showUntrackedFiles', 'no');
+  assert.equal(treeChanges(repo), '');
+  write(repo, 'e2e/new.spec.js', 'test');
+  assert.match(treeChanges(repo), /new\.spec\.js/);
 });

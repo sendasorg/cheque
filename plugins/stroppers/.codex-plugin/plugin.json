@@ -1,6 +1,6 @@
 {
   "name": "stroppers",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Deliver approved Linear issues through Pstack with cross-harness review, applicable specialist checks, in-session browser evidence and portable checkpoints.",
   "author": { "name": "sogamoso" },
   "homepage": "https://github.com/sogamoso/stroppers",

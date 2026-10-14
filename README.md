@@ -53,7 +53,7 @@ Claude Code (project scope, so the team gets the same version):
 
 ```sh
 cd your-repo
-claude plugin marketplace add sogamoso/stroppers#v0.1.8 --scope project
+claude plugin marketplace add sogamoso/stroppers#v0.1.9 --scope project
 claude plugin install stroppers@stroppers --scope project
 ```
 

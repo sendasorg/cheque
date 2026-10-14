@@ -140,6 +140,11 @@ export function summarizeResults(resultsPath) {
   return { tests, stats: report.stats || null };
 }
 
+// Uncommitted changes, including untracked files whatever status.showUntrackedFiles says.
+export function treeChanges(repoRoot) {
+  return execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: repoRoot, encoding: 'utf8' }).trim();
+}
+
 // A run passes only when the runner exited cleanly, at least one test passed,
 // none failed, and the result is bound to a committed revision.
 export function runStatus({ code, tests, clean }) {
@@ -176,7 +181,7 @@ export async function runBrowserVerification({ repoRoot, runId, browser = 'chrom
   if (ready.status !== 'ready') return { status: 'unverified', reason: `environment: ${ready.reason}`, environment: ready };
   const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
   // Untracked, non-ignored files count: Playwright could run or serve them.
-  const treeState = () => execFileSync('git', ['status', '--porcelain'], { cwd: repoRoot, encoding: 'utf8' }).trim();
+  const treeState = () => treeChanges(repoRoot);
   const dirty = treeState();
   const outputDir = join(artifactsRoot, runId);
   mkdirSync(outputDir, { recursive: true });
