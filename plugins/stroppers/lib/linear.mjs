@@ -41,14 +41,29 @@ export async function checkBinding(config, env, fetchImpl) {
   return { workspace_id: data.organization.id, workspace_key: data.organization.urlKey, viewer_id: data.viewer.id };
 }
 
-// A verification key that authenticates as an approval owner could also be
-// used to write an approval as that owner, with no integration attribution.
-// Linear does not expose a key's scopes, so this cannot be checked; it is
-// reported so the operator can confirm the key is read-only.
-export function credentialRisk(binding, owners) {
-  if (owners.includes(binding.viewer_id))
-    return 'the Linear verification key authenticates as an approval owner; it must be a read-only key, or Stroppers cannot tell an agent-written approval from the owner\'s own';
-  return null;
+// Whether the verification key can write. Linear checks scopes before it
+// resolves the target, so an update of a nonexistent issue answers "Invalid
+// scope" for a read-only key and "Entity not found" for a writable one, with no
+// side effect either way.
+export async function keyCanWrite(config, env, fetchImpl = fetch) {
+  const res = await fetchImpl(ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: credential(config, env) },
+    body: JSON.stringify({ query: 'mutation { issueUpdate(id: "00000000-0000-0000-0000-000000000000", input: { priority: 4 }) { success } }' }),
+  });
+  const message = ((await res.json().catch(() => ({}))).errors || []).map((e) => e.message).join(' ');
+  if (/invalid scope/i.test(message)) return false;
+  if (/not found/i.test(message)) return true;
+  throw new LinearError(`could not determine whether the verification key is read-only (${message || res.status})`);
+}
+
+// A writable verification key that authenticates as an approval owner could
+// write an approval as that owner with no integration attribution, so
+// approvals cannot be trusted while such a key is in the session.
+export async function credentialRisk(config, env, binding, owners, fetchImpl) {
+  if (!owners.includes(binding.viewer_id)) return null;
+  if (!(await keyCanWrite(config, env, fetchImpl))) return null;
+  return `the Linear verification key (${config.linear.credential_env}) can write as an approval owner; replace it with a read-only key before relying on approvals`;
 }
 
 const ISSUE = `query($id: String!) {

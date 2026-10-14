@@ -174,10 +174,14 @@ test('fetchIssue refuses a credential that authenticates to a different workspac
   await assert.rejects(fetchIssue(config, 'OPS-1', { K: 'x' }, fakeLinear({ id: 'o1', urlKey: 'acme' }, issueData)), /not the bound team ENG/);
 });
 
-test('a verification key that authenticates as an approval owner is flagged', async () => {
+test('an owner verification key is a blocker only when it can write', async () => {
   const { credentialRisk } = await import('../plugins/stroppers/lib/linear.mjs');
-  assert.match(credentialRisk({ viewer_id: OWNER }, [OWNER]), /must be a read-only key/);
-  assert.equal(credentialRisk({ viewer_id: 'service-account' }, [OWNER]), null);
+  const reply = (message) => async () => ({ status: 200, json: async () => ({ errors: [{ message }] }) });
+  const config = { linear: { credential_env: 'K' } };
+  const env = { K: 'x' };
+  assert.equal(await credentialRisk(config, env, { viewer_id: OWNER }, [OWNER], reply('Invalid scope: `write` or `issues:create` required')), null);
+  assert.match(await credentialRisk(config, env, { viewer_id: OWNER }, [OWNER], reply('Entity not found: Issue')), /can write as an approval owner/);
+  assert.equal(await credentialRisk(config, env, { viewer_id: 'service' }, [OWNER], reply('Entity not found: Issue')), null);
 });
 
 function fakeLinearApi({ viewer = { id: 'agent-app', app: true }, org = { id: 'o1', urlKey: 'acme' }, comments = [] } = {}) {

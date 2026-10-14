@@ -150,8 +150,9 @@ const commands = {
       try {
         const binding = await checkBinding(effective, process.env);
         report.linear = { workspace: binding.workspace_key, ok: true };
-        const risk = credentialRisk(binding, (effective.authority?.owners || []).map((o) => o.linear_user_id));
-        if (risk) report.warnings = [risk];
+        const risk = await credentialRisk(effective, process.env, binding, (effective.authority?.owners || []).map((o) => o.linear_user_id));
+        if (risk) report.blockers.push(`linear: ${risk}`);
+        else report.linear.verification_key = 'read-only or not an owner';
         const agent = await checkAgent(effective, process.env, stateDir(), (effective.authority?.owners || []).map((o) => o.linear_user_id));
         report.linear.agent = { ok: true, app_user: agent.agent_id };
       } catch (e) {
@@ -288,6 +289,8 @@ const commands = {
     const issueKey = opt.issue || c.task.issue_key;
     const { issue, comments } = await fetchIssue(effective, issueKey, process.env);
     const owners = effective.authority?.owners?.map((o) => o.linear_user_id) || [];
+    const risk = await credentialRisk(effective, process.env, await checkBinding(effective, process.env), owners);
+    if (risk) fail(`approval cannot be verified: ${risk}`);
     const result = verifyApproval({ issue, comments, owners, expectedRevision: c.contract.revision, workspace: issue.workspace_id });
     c.task.issue_id = issue.id;
     c.task.workspace_id = issue.workspace_id;
