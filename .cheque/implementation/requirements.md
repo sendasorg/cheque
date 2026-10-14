@@ -21,15 +21,15 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-001.1 | Reusable, low-maintenance open-source SDLC plugin centered on backnotprop/pstack | verified | file: plugins/cheque/ (plugin), dependencies.json (pstack core pinned); run: VR#3,#4 load |
 | R-001.2 | Pstack owns planning, execution, verification, PR feedback, merging | verified | file: skills/deliver/SKILL.md steps 4-7; run: PRE-5 used Pstack independent verifier and Opening a PR (VR run 5) |
 | R-001.3 | Add narrowly scoped quality/production capabilities, no second lifecycle orchestrator | verified | file: references/specialists/*, lib/triggers.mjs; no lifecycle code (docs/architecture.md) |
-| R-002.1 | Complete repo inspection, implementation, validation, reviewable change set | in-progress | why: change set on cheque/release-0.1; review fixes applied, re-review pending |
-| R-002.2 | Pilot in one repository before rollout | verified | run: pilot repo sendasorg/cheque-pilot (docs/validation-report.md) |
+| R-002.1 | Complete repo inspection, implementation, validation, reviewable change set | verified | run: release PR #1 squash-merged to main (bec8041) after independent review; tag v0.1.11 |
+| R-002.2 | Pilot in one repository before rollout | verified | run: pilot repo sogamoso/stroppers-pilot (docs/validation-report.md) |
 | R-002.3 | Ask which target repo to use if not supplied, before installing/changing config | verified | why: pilot is a disposable fixture created by this session; operator settled repo questions (decisions.md D-001) |
 | R-003.1 | Agent takes approved task through Pstack, specialists, independent verification, PR feedback, CI, authorized delivery | verified | run: PRE-5 approved, built, reviewed (Codex), verified, PR, CI, merged, recorded in Linear (VR runs 5-6) |
 | R-003.2 | Delivery complete only when deliverable meets approved acceptance, evidence in Linear | verified | run: PRE-5 Done only after acceptanceSummary ok at merge commit; Linear evidence comment |
 | R-003.3 | Deployable changes need target-environment application and live acceptance | unverified | why: no deployable delivery with live acceptance exercised |
 | R-003.4 | Non-deployable artifacts use explicitly defined artifact acceptance | verified | file: references/verification.md (artifact acceptance); test: specialists docs-only -> release not applicable |
 | R-003.5 | Observation windows / human judgment stay visible as outstanding acceptance | verified | file: SKILL.md step 9, release-readiness.md (observation windows stay open) |
-| R-003.6 | Setup reproducible on another machine | in-progress | why: setup reproducible from pinned sources; install-from-tag pending release tag |
+| R-003.6 | Setup reproducible on another machine | verified | run: fresh repository installed from sogamoso/stroppers#v0.1.11 (Claude Code) and from the GitHub URL (Codex, isolated home); stroppers install and doctor ran |
 | R-003.7 | Use harness-native local/cloud execution and native scheduling/triggers | verified | run: VR#12 Claude routine; docs/capability-matrix.md |
 | R-003.8 | No custom controller, Eve, database, persistent worker or laptop daemon | verified | file: no server code in repo; docs/architecture.md |
 | R-004.1 | Natural language primary; namespaced commands optional shortcuts; no per-task ceremony | verified | run: VR PRE-5 one-line request; file: skills/deliver description |
@@ -467,7 +467,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 
 | ID | Obligation | Status | Implementation / evidence / reason |
 | --- | --- | --- | --- |
-| R-129.1 | Production rollout in scope after pilot; pilot not an approval gate | in-progress | why: pilot complete; production rollout target pending operator choice |
+| R-129.1 | Production rollout in scope after pilot; pilot not an approval gate | verified | run: release per operator choice "release only": PR merged, v0.1.11 tagged, main default branch |
 | R-129.2 | Pause only for concrete capability/scope/missing authorization | verified | why: pauses limited to concrete capability/authority gaps (questions asked one at a time) |
 | R-129.3 | Workflow rollout distinguished from application deploys under issue grants | verified | file: validation report distinguishes workflow rollout from PRE-5 delivery |
 | R-130.1 | Stage 1 inspection report incl. overlaps and baseline failures | verified | file: decisions D-001..; capability matrix; baseline (pilot tests green) |
@@ -477,9 +477,9 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-130.5 | Stage 5 constraints, checks, specialist routing | verified | file: floor, triggers, specialists references; tests |
 | R-130.6 | Stage 6 grilling and glossary/ADR | verified | file: grill wrappers; glossary/adr config (interactive run not exercised, see R-036) |
 | R-130.7 | Stage 7 repo-specific verification generated and proven | verified | run: pilot PR #4 |
-| R-130.8 | Stage 8 pilot, docs, change set, rollout, README validated on real paths | in-progress | why: pilot done; release rollout pending |
+| R-130.8 | Stage 8 pilot, docs, change set, rollout, README validated on real paths | verified | run: pilot complete, release done; README validated piecewise (see R-138.1) |
 | R-131.1 | Each stage ends with inspectable files and evidence | verified | file: commits per stage with evidence in this ledger |
-| R-132.1 | Fresh checkout reproduces setup from pinned sources | in-progress | why: pinned install from release tag pending |
+| R-132.1 | Fresh checkout reproduces setup from pinned sources | verified | run: install from tag v0.1.11 in a fresh repository |
 | R-132.2 | Second install idempotent and preserving | verified | test: install idempotent |
 | R-132.3 | All skills/refs resolve in both harnesses; capabilities exercised | verified | test: links resolve except listed upstream pstack ones; run: both harness loads |
 | R-132.4 | Simple task: Pstack without interview or all specialists | verified | run: PRE-5 no interview, no extra specialists |
@@ -502,9 +502,9 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-133.2 | Smoke scenarios in disposable fixture/worktree | verified | test: temp repos; run: disposable pilot |
 | R-134.1 | Deliver plugin, both layers, config + checkpoint contract, manifest, capability matrix | verified | file: plugin, manifests, docs/checkpoint-contract.md, dependencies.json, capability matrix |
 | R-134.2 | Deliver README, operator guide, update/removal instructions | verified | file: README, docs/configuration.md, operator usage in README |
-| R-134.3 | Deliver pilot change set and validation report with remaining limitations | in-progress | why: pilot PRs #3 and #4; validation report final after re-review |
+| R-134.3 | Deliver pilot change set and validation report with remaining limitations | verified | run: pilot PRs #3 and #4; docs/validation-report.md |
 | R-135.1 | Native validation and portable checkpoints in scope; no hosting; no runtime/recovery overclaims | verified | file: README unattended expectations; no overclaims in matrix |
-| R-136.1 | Root README with exact tested instructions, aligned to implementation | in-progress | why: README aligned to 0.1.11; clean-machine replay pending |
+| R-136.1 | Root README with exact tested instructions, aligned to implementation | verified | file: README aligned to v0.1.11; install path executed from the tag; clean-machine replay still pending (R-138.1) |
 | R-137.1 | README: purpose, Pstack role, specialists, harnesses, plugin vs runtime vs Playwright | verified | file: README What does what |
 | R-137.2 | README: prerequisites, environments, subscriptions, cloud limits, unsupported paths | verified | file: README Requirements |
 | R-137.3 | README: install/config commands, pinned deps, credential setup, auth | verified | file: README Set up |
@@ -516,7 +516,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-137.9 | README: no hosting, limits, native automation, unattended expectations, update/rollback/uninstall, troubleshooting | verified | file: README Unattended, Update, Troubleshooting |
 | R-137.10 | README: attribution and reference links | verified | file: README License and attribution |
 | R-138.1 | README validated on fresh setup/fixture; record exercised paths | unverified | why: README steps exercised piecewise in the pilot (marketplace add/install, helper install, credentials, doctor, first delivery); not replayed top to bottom on a clean machine |
-| R-138.2 | Samples/commands match schema and entry point | in-progress | why: README commands match bin/cheque usage; install command references the release tag, which is created when the release PR merges |
+| R-138.2 | Samples/commands match schema and entry point | verified | run: README install commands executed against tag v0.1.11; helper commands match bin/stroppers usage |
 | R-138.3 | Second operator can set up without this conversation; provider UI steps explicit | unverified | why: requires an independent operator dry run |
 | R-139.1 | Public-release-ready repo; upstream licenses/attribution preserved; pins/patches recorded | verified | file: LICENSE (MIT), THIRD_PARTY_NOTICES.md, dependencies.json |
 | R-139.2 | Compatible project license selected; no relicensing | verified | file: MIT compatible with MIT/Apache-2.0 components; no relicensing |
@@ -525,7 +525,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-140.3 | No private hosts/credentials/team data/Linear identities/grants in public tree | verified | run: git grep for tokens, Linear ids, workspace names, emails, local paths: tree clean (vendor excluded; only fake test token) |
 | R-140.4 | Tracker/PR publication integration configurable (Linear + GitHub current) | verified | file: Linear and GitHub integration via config; adapters |
 | R-141.1 | No evidence/transcripts in public repo | verified | file: .cheque/state and artifacts ignored; evidence lives in pilot repo |
-| R-141.2 | Scan tree and history for secrets/private data before release | in-progress | why: tree clean; release PR must be squash-merged so workspace names in branch history stay out of main |
+| R-141.2 | Scan tree and history for secrets/private data before release | verified | run: tree scan clean; release squash-merged, main history has no workspace names (git log -p main scan: 0 hits) |
 | R-141.3 | Making repo public is a separate authorized publishing action | verified | why: repository remains private; publishing is a separate action |
 | R-142.1 | Fresh user installs/configures/uses without editing core or provisioning | unverified | why: fresh-user setup not replayed end to end on a clean machine |
 | R-142.2 | Local and each cloud session test exact PR revision and export evidence | unverified | why: local verified; Claude cloud blocked by allowlist; Codex cloud blocked |

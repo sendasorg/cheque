@@ -289,6 +289,7 @@ tested.
 | `Linear did not issue an agent token` | Enable client credentials on the OAuth app; check the client id and secret |
 | Review `unavailable` or `auth-failed` | Install and sign in to the reviewer CLI where the review runs (`claude auth status`, `codex login status`) |
 | Browser `unverified (environment)` | Run `cheque browser prepare`; in cloud, allow the Playwright download hosts |
+| Another project's `cheque` version changed | Claude Code tracks a marketplace by name per machine; adding it at a new ref moves every project installed from it. Pin with the same ref everywhere, or reinstall |
 | Plugin changes not picked up | Harnesses cache by version: update the marketplace and the plugin, or reinstall |
 | Agent stops at "ready to merge" with a permission denial | The harness blocked the merge. Merge yourself, or allow `Bash(gh pr merge:*)` for the repository |
 | `HTTP 403: GitHub GraphQL is not available` in cloud | Expected; `cheque` uses REST. Avoid `gh pr comment` in custom steps |

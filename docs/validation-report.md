@@ -96,6 +96,16 @@ release, so some earlier PR comments link to removed files. The ledger was
 corrected where the audit found verified rows resting on documentation or
 partial runs.
 
+## Release
+
+Released as v0.1.11 (squash merge `bec8041`, tag `v0.1.11`, `main` made the
+default branch; the superseded `ss/friendly-gates-n62i4n` branch is kept
+untouched). The README install path was executed from the tag in a fresh
+repository for Claude Code and from the GitHub URL for Codex. Claude Code
+records marketplaces by name per machine, so adding `sogamoso/stroppers` at a
+new ref also moves other local projects that installed from the same
+marketplace name to that ref.
+
 ## Remaining limitations
 
 See the ledger and [capability-matrix.md](capability-matrix.md). In short: Codex
