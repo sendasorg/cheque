@@ -7,6 +7,7 @@ export const SCHEMA = 'stroppers.checkpoint/v1';
 export const MARKER = '<!-- stroppers:checkpoint v1 -->';
 export const CONTRACT_MARKER = '<!-- stroppers:contract v1 -->';
 export const OUTCOMES = ['passed', 'failed', 'not-applicable', 'unverified'];
+const STOPPED = ['blocked', 'revoked', 'delivered'];
 export const STAGES = ['contract', 'awaiting-approval', 'planning', 'implementing', 'reviewing', 'pull-request', 'merging', 'deploying', 'live-acceptance', 'delivered', 'blocked', 'revoked'];
 
 function canonical(value) {
@@ -97,6 +98,9 @@ export function setStage(cp, stage, blockedReason = null) {
   if (!STAGES.includes(stage)) throw new Error(`unknown stage ${stage}`);
   cp.stage = stage;
   cp.blocked_reason = stage === 'blocked' ? blockedReason || 'unspecified' : null;
+  // A session that stops working the delivery gives up its lease, so the next
+  // session can continue without waiting for it to expire.
+  if (STOPPED.includes(stage)) cp.execution.lease = null;
   cp.history.push({ at: now(), event: 'stage', stage, reason: cp.blocked_reason });
   return cp;
 }
@@ -181,7 +185,7 @@ export function recordAttempt(cp, blockerId, kind, config, note = '') {
 // lease detects competing sessions and refuses to proceed; it does not claim
 // distributed mutual exclusion.
 export function acquireLease(cp, holder, { ttlMinutes = 120, at = new Date() } = {}) {
-  const lease = cp.execution.lease;
+  const lease = STOPPED.includes(cp.stage) ? null : cp.execution.lease;
   if (lease && lease.holder !== holder && new Date(lease.expires_at) > at)
     return { ok: false, reason: `another session (${lease.holder}) holds this delivery until ${lease.expires_at}` };
   cp.execution.lease = { holder, acquired_at: at.toISOString(), expires_at: new Date(at.getTime() + ttlMinutes * 60000).toISOString() };

@@ -152,6 +152,17 @@ test('a second session is refused while another holds the lease', () => {
   assert.equal(acquireLease(cp, 'session-b', { at: new Date(Date.now() + 3 * 3600000) }).ok, true);
 });
 
+test('a session that stops gives up its lease so the next one can continue', async () => {
+  const { setStage } = await import('../plugins/stroppers/lib/checkpoint.mjs');
+  const cp = newCheckpoint({ binding: { workspace: 'w', team: 't' }, issue, repository: 'a/b', runId: 'r', harness: 'codex', mode: 'local', contract });
+  acquireLease(cp, 'session-a');
+  setStage(cp, 'blocked', 'waiting for owner');
+  assert.equal(cp.execution.lease, null);
+  const stale = parse(render(cp));
+  stale.execution.lease = { holder: 'session-a', expires_at: new Date(Date.now() + 3600000).toISOString() };
+  assert.equal(acquireLease(stale, 'session-b').ok, true, 'a lease on a stopped checkpoint is free');
+});
+
 test('equal issue keys in different workspaces or repositories have distinct task keys', () => {
   const mk = (workspace, repository) => newCheckpoint({ binding: { workspace, team: 'ENG' }, issue, repository, runId: 'r', harness: 'codex', mode: 'local', contract });
   assert.notEqual(taskKey(mk('ws-a', 'acme/a')), taskKey(mk('ws-b', 'acme/a')));
