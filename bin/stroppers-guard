@@ -66,12 +66,15 @@ case $mode in
     fi
 
     # The label vouches for the body as the labeler read it. An edit since then
-    # by someone without write access isn't covered.
+    # by someone without write access isn't covered. Body and editor come from
+    # one response, so nothing can change between the check and the snapshot.
+    # The title is left out: renames aren't covered by the edit check.
     # shellcheck disable=SC2016 # $owner, $name, $number are GraphQL variables
-    editor=$(gh api graphql -F owner="${repo%/*}" -F name="${repo#*/}" -F number="$number" -f query='
+    issue_data=$(gh api graphql -F owner="${repo%/*}" -F name="${repo#*/}" -F number="$number" -f query='
       query($owner: String!, $name: String!, $number: Int!) {
-        repository(owner: $owner, name: $name) { issue(number: $number) { lastEditedAt editor { login } } }
-      }' -q '.data.repository.issue | select(.lastEditedAt != null) | .editor.login // "ghost"')
+        repository(owner: $owner, name: $name) { issue(number: $number) { body lastEditedAt editor { login } } }
+      }' -q .data.repository.issue)
+    editor=$(jq -r 'select(.lastEditedAt != null) | .editor.login // "ghost"' <<<"$issue_data")
     if [ -n "$editor" ] && ! writes "$editor"; then
       gh issue edit "$number" --remove-label ready-for-agent --add-label needs-human >/dev/null
       gh issue comment "$number" --body "@$editor, who doesn't have write access, last edited this issue, so the agent won't build from it. Someone with write access should re-read it, make the latest edit, and label it ready-for-agent again." >/dev/null
@@ -79,7 +82,9 @@ case $mode in
     fi
 
     {
-      gh api "repos/$repo/issues/$number" | jq -r '"# \(.title)\n\n\(.body // "")"'
+      echo "# Issue #$number"
+      echo
+      jq -r '.body // ""' <<<"$issue_data"
       api "issues/$number/comments" | trusted_only | jq -r '.[] | "\n## Comment from @\(.user.login)\n\n\(.body)"'
     } > "$context"
 
