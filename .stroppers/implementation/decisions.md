@@ -79,7 +79,7 @@ writes remains to be demonstrated with a read-only key. Serves R-087, R-088.
 `main` in this repository requires a pull request with one approving review
 (not enforced for admins). Early commits were pushed directly by the
 implementing session with admin bypass before this was noticed. From commit
-`d1d9bd6` onward all work goes through `stroppers/release-0.1` and a PR. The
+`8853749` onward all work goes through `stroppers/release-0.1` and a PR. The
 earlier commits are left as they are rather than rewritten.
 
 ## D-010 Release PR is squash-merged
