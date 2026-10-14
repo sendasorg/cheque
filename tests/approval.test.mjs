@@ -76,6 +76,13 @@ test('owner revocation and issue cancellation stop delivery', () => {
   assert.equal(verifyApproval({ issue: { ...issue, state_type: 'canceled' }, comments: comments.slice(0, 2), owners: [OWNER] }).status, 'revoked');
 });
 
+test('the most recent owner approval is the one reported', () => {
+  const posted = agentContract();
+  const first = ownerSays(`stroppers approve ${REV}`);
+  const second = ownerSays(`stroppers approve ${REV}`);
+  assert.equal(verifyApproval({ issue, comments: [posted, first, second], owners: [OWNER] }).event_id, second.id);
+});
+
 test('wrong workspace is rejected before approval is considered', () => {
   const r = verifyApproval({ issue: { ...issue, workspace_id: 'ws-2' }, comments: [agentContract(), ownerSays(`stroppers approve ${REV}`)], owners: [OWNER], workspace: 'ws-1' });
   assert.equal(r.status, 'rejected');

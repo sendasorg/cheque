@@ -60,7 +60,7 @@ export function verifyApproval({ issue, comments, owners, expectedRevision, work
         continue;
       }
       considered.push({ id: c.id, accepted: true, why: 'owner approval of current revision' });
-      approval ||= c;
+      approval = c; // the latest valid owner approval is the one reported
     }
     if (extend) {
       considered.push({ id: c.id, accepted: extend[1] === revision, why: 'scope extension' });
