@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "destinationRoot": "plugins/stroppers/vendor",
+  "sources": [
+    {
+      "name": "pstack",
+      "repo": "https://github.com/backnotprop/pstack",
+      "sha": "1f0f9c3bac03c4297f6fc8f7644fa412eda57085",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2026 Lauren Tan",
+      "role": "Core workflow: planning, engineering playbooks, verification, PR babysitting and shipping",
+      "destination": "pstack",
+      "include": ["LICENSE", "MIRROR.md", "skills", "agents"],
+      "modifications": "none",
+      "notes": "Standalone mirror of cursor/plugins/pstack. Not phthomas/pstack, not michael-denyer/pstack-claude."
+    },
+    {
+      "name": "addyosmani-agent-skills",
+      "repo": "https://github.com/addyosmani/agent-skills",
+      "sha": "aeac41d4d005999432bb7312f7ff06383a91d59d",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2025 Addy Osmani",
+      "role": "Quality contract, security, observability and release-readiness practices",
+      "destination": "addyosmani-agent-skills",
+      "include": [
+        "LICENSE",
+        "skills/constraint-driven-development",
+        "skills/security-and-hardening",
+        "skills/observability-and-instrumentation",
+        "skills/shipping-and-launch",
+        "references/security-checklist.md",
+        "references/observability-checklist.md",
+        "references/definition-of-done.md",
+        "references/performance-checklist.md",
+        "references/accessibility-checklist.md"
+      ],
+      "modifications": "none",
+      "notes": "Other skills named in prose (code-review-and-quality, test-driven-development, interview-me, ci-cd-and-automation, performance-optimization, debugging-and-error-recovery) are name mentions, not links, and are not vendored."
+    },
+    {
+      "name": "mattpocock-skills",
+      "repo": "https://github.com/mattpocock/skills",
+      "sha": "49dd158d1076134a641b33efb035946536778336",
+      "license": "MIT",
+      "copyright": "Copyright (c) 2026 Matt Pocock",
+      "role": "Optional interactive discovery: grill-with-docs, grill-me, grilling, domain-modeling",
+      "destination": "mattpocock-skills",
+      "include": [
+        "LICENSE",
+        "skills/engineering/grill-with-docs",
+        "skills/productivity/grill-me",
+        "skills/productivity/grilling",
+        "skills/engineering/domain-modeling"
+      ],
+      "modifications": "none",
+      "notes": "grill-with-docs calls grilling and domain-modeling by name; Stroppers wrappers resolve those names to the vendored copies."
+    },
+    {
+      "name": "codex-plugin-cc",
+      "repo": "https://github.com/openai/codex-plugin-cc",
+      "sha": "db52e28f4d9ded852ab3942cea316258ae4ef346",
+      "license": "Apache-2.0",
+      "copyright": "Copyright 2026 OpenAI",
+      "role": "Review findings contract (review-output schema) for cross-harness review",
+      "destination": "codex-plugin-cc",
+      "include": ["LICENSE", "NOTICE", "plugins/codex/schemas/review-output.schema.json"],
+      "modifications": "none",
+      "notes": "The companion runtime is not used: it reviews only HEAD or the working tree and takes no contract input (decision D-006)."
+    }
+  ],
+  "references": [
+    {
+      "name": "sharpen",
+      "repo": "https://github.com/buritica/sharpen",
+      "sha": "efe8c07ef6bc60c85ba405be036c1f1a0c209b80",
+      "path": "plugins/sdlc/README.md",
+      "use": "Enforcement reference only (aggregated required check, weakened-check detection). Not installed."
+    }
+  ]
+}

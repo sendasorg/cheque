@@ -1,0 +1,10 @@
+{
+  "name": "stroppers",
+  "version": "0.1.0",
+  "description": "Deliver approved Linear issues through Pstack with cross-harness review, applicable specialist checks, in-session browser evidence and portable checkpoints.",
+  "author": { "name": "sogamoso" },
+  "homepage": "https://github.com/sogamoso/stroppers",
+  "repository": "https://github.com/sogamoso/stroppers",
+  "license": "MIT",
+  "keywords": ["sdlc", "pstack", "review", "linear", "playwright"]
+}

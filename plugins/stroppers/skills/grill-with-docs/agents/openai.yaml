@@ -1,0 +1,5 @@
+interface:
+  display_name: "Grill with Docs"
+  short_description: "Upstream grill-with-docs, bundled by Stroppers"
+policy:
+  allow_implicit_invocation: false
