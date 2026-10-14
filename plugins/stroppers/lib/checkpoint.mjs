@@ -144,7 +144,7 @@ export function acceptanceSummary(cp, { phase }) {
     const o = cp.outcomes[p.criterion_id];
     const expected = p.stage === 'post-deploy' && cp.revision.deployed_artifact ? cp.revision.deployed_artifact : cp.revision.head;
     if (!o) missing.push(p.criterion_id);
-    else if (o.stale || (expected && o.revision !== expected)) stale.push(p.criterion_id);
+    else if (o.stale || !expected || !o.revision || o.revision !== expected) stale.push(p.criterion_id);
     else if (o.status === 'failed') failed.push(p.criterion_id);
     else if (o.status === 'unverified') unverified.push(p.criterion_id);
     else if (o.status === 'not-applicable' && !exempt.has(p.criterion_id)) unexcused.push(p.criterion_id);
@@ -211,7 +211,8 @@ export function recordAttempt(cp, blockerId, kind, config, note = '') {
 // lease detects competing sessions and refuses to proceed; it does not claim
 // distributed mutual exclusion.
 export function acquireLease(cp, holder, { ttlMinutes = 120, at = new Date() } = {}) {
-  const lease = STOPPED.includes(cp.stage) ? null : cp.execution.lease;
+  // Every unexpired lease is honored; stopping clears the lease explicitly (setStage).
+  const lease = cp.execution.lease;
   if (lease && lease.holder !== holder && new Date(lease.expires_at) > at)
     return { ok: false, reason: `another session (${lease.holder}) holds this delivery until ${lease.expires_at}` };
   cp.execution.lease = { holder, acquired_at: at.toISOString(), expires_at: new Date(at.getTime() + ttlMinutes * 60000).toISOString() };

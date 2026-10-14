@@ -175,7 +175,9 @@ export async function runBrowserVerification({ repoRoot, runId, browser = 'chrom
   const ready = doctor(repoRoot, { browser });
   if (ready.status !== 'ready') return { status: 'unverified', reason: `environment: ${ready.reason}`, environment: ready };
   const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
-  const dirty = execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], { cwd: repoRoot, encoding: 'utf8' }).trim();
+  // Untracked, non-ignored files count: Playwright could run or serve them.
+  const treeState = () => execFileSync('git', ['status', '--porcelain'], { cwd: repoRoot, encoding: 'utf8' }).trim();
+  const dirty = treeState();
   const outputDir = join(artifactsRoot, runId);
   mkdirSync(outputDir, { recursive: true });
   const port = await freePort();
@@ -207,7 +209,9 @@ export async function runBrowserVerification({ repoRoot, runId, browser = 'chrom
   const { tests, stats } = summarizeResults(join(outputDir, 'results.json'));
   const videos = walk(join(outputDir, 'test-results')).filter((f) => f.endsWith('.webm'));
   const traces = walk(join(outputDir, 'test-results')).filter((f) => f.endsWith('.zip'));
-  const { status, reason } = runStatus({ code, tests, clean: dirty === '' });
+  const after = treeState();
+  const sameRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim() === revision;
+  const { status, reason } = runStatus({ code, tests, clean: dirty === '' && after === '' && sameRevision });
   const record = {
     run_id: runId,
     status,

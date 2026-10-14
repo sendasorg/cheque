@@ -120,6 +120,7 @@ test('delivery actions outside the approved repositories or environments need an
   assert.match(authorizeAction(cp, latest, { action: 'merge', repository: 'acme/other', authority }).reason, /outside the approved repositories/);
   assert.match(authorizeAction(cp, latest, { action: 'deploy', authority }).reason, /needs --environment/);
   assert.match(authorizeAction(cp, latest, { action: 'delete-prod-db', authority }).reason, /unknown action/);
+  for (const action of ['toString', 'constructor', '__proto__']) assert.match(authorizeAction(cp, latest, { action, authority }).reason, /unknown action/);
   assert.match(authorizeAction(cp, latest, { action: 'deploy', environment: 'preview', authority: { environments: [] } }).reason, /operator's authority/);
 });
 
@@ -184,6 +185,10 @@ test('completion requires every approved criterion: unplanned, old-revision and 
   cp.contract.snapshot.exceptions = [{ criterion: 'AC2', status: 'not-applicable', reason: 'owner approved' }];
   assert.equal(acceptanceSummary(cp, { phase: 'delivery' }).ok, true);
   assert.equal(acceptanceSummary({ ...cp, verification_plan: [] }, { phase: 'delivery' }).ok, false, 'an empty plan never passes');
+  const fresh = newCheckpoint({ binding: { workspace: 'w', team: 't' }, issue, repository: 'a/b', runId: 'r', harness: 'codex', mode: 'local', contract });
+  fresh.verification_plan = [{ criterion_id: 'AC1', stage: 'pre-merge', method: 'm' }];
+  recordOutcome(fresh, 'AC1', { status: 'passed', revision: undefined });
+  assert.equal(acceptanceSummary(fresh, { phase: 'delivery' }).ok, false, 'no recorded head means nothing is bound to a revision');
 });
 
 test('a restored checkpoint whose snapshot was edited is rejected', async () => {
@@ -209,9 +214,10 @@ test('a session that stops gives up its lease so the next one can continue', asy
   acquireLease(cp, 'session-a');
   setStage(cp, 'blocked', 'waiting for owner');
   assert.equal(cp.execution.lease, null);
-  const stale = parse(render(cp));
-  stale.execution.lease = { holder: 'session-a', expires_at: new Date(Date.now() + 3600000).toISOString() };
-  assert.equal(acquireLease(stale, 'session-b').ok, true, 'a lease on a stopped checkpoint is free');
+  assert.equal(acquireLease(parse(render(cp)), 'session-b').ok, true, 'after stopping, the next session can claim');
+  const claimed = parse(render(cp));
+  acquireLease(claimed, 'session-b');
+  assert.equal(acquireLease(claimed, 'session-c').ok, false, 'a fresh claim on a blocked checkpoint is honored');
 });
 
 test('equal issue keys in different workspaces or repositories have distinct task keys', () => {

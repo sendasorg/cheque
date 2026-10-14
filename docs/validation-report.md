@@ -66,6 +66,36 @@ were fixed before the next run:
 
 Also exercised: an unattended session on a deliberately vague issue (PRE-6) stopped at the contract stage, made no changes, started no interview and named what would unblock it. That run found that an empty contract could still be posted with an approval line; contracts now need an outcome and at least one criterion.
 
+## Verification skill
+
+Pstack's `create-verification-skill` (vendored, unmodified) generated the
+pilot's `.claude/skills/verify-price-calculator/` skill with a feature map
+(calculator form, price API, health endpoint), ran it end to end once, fixed a
+wrong process id in its launch step and a wrong claim in its map, and opened
+pilot PR #4. The session ran with the Stroppers plugin installed but not
+invoked; it behaved as a session without Stroppers.
+
+## Independent review
+
+Two independent reviews ran after the pilot: an adversarial code review by
+Codex (the other harness) and a requirement-coverage audit by a fresh Claude
+agent. They reported 16 code findings (9 high) and 21 ledger findings. All
+code findings were confirmed and fixed with tests (commit "Address
+independent review findings"): completion now reconciles every approved
+criterion against the current revision; authorization is default-deny and
+bounded by the operator's private limits; reviewer independence is enforced
+for explicit reviewers and repository config can no longer define reviewer
+commands; restored checkpoints must hash to their approved contract and are
+claimed only from the agent app's own comment; scope extensions work; evidence
+uploads are limited to videos and a sanitized summary inside the run
+directory; browser runs no longer pass on runner errors, all-skipped suites or
+dirty trees; uninstall validates its manifest; the review diff write ignores
+committed symlinks. Raw `results.json` assets uploaded during the pilot
+contained local filesystem paths; they were deleted from the pilot's evidence
+release, so some earlier PR comments link to removed files. The ledger was
+corrected where the audit found verified rows resting on documentation or
+partial runs.
+
 ## Remaining limitations
 
 See the ledger and [capability-matrix.md](capability-matrix.md). In short: Codex

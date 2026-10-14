@@ -7,7 +7,7 @@
       "name": "stroppers",
       "source": "./plugins/stroppers",
       "description": "Deliver approved Linear issues through Pstack with cross-harness review, applicable specialist checks, in-session browser evidence and portable checkpoints.",
-      "version": "0.1.7"
+      "version": "0.1.8"
     }
   ]
 }

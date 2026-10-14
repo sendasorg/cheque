@@ -114,10 +114,10 @@ export function applyApproval(cp, result) {
 // before the action against the latest verification, never cached.
 // Every delivery action names the target it touches. Unknown actions and
 // missing targets are refused.
-const ACTION_TARGETS = { 'publish-pr': 'repository', merge: 'repository', deploy: 'environment', 'configure-environment': 'environment' };
+const ACTION_TARGETS = Object.assign(Object.create(null), { 'publish-pr': 'repository', merge: 'repository', deploy: 'environment', 'configure-environment': 'environment' });
 
 export function authorizeAction(cp, latest, { action, repository, environment, authority = {} }) {
-  const needs = ACTION_TARGETS[action];
+  const needs = Object.hasOwn(ACTION_TARGETS, action) ? ACTION_TARGETS[action] : null;
   if (!needs) return { ok: false, reason: `unknown action "${action}"; authorizable actions are ${Object.keys(ACTION_TARGETS).join(', ')}` };
   if (needs === 'repository' && !repository) return { ok: false, reason: `${action} needs --repository` };
   if (needs === 'environment' && !environment) return { ok: false, reason: `${action} needs --environment` };

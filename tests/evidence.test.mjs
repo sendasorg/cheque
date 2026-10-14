@@ -61,3 +61,16 @@ test('uninstall refuses a manifest that names files Stroppers never manages', ()
   write(repo, '.stroppers/managed.json', JSON.stringify({ version: '0', items: [{ path: '../other/README.md', kind: 'file', sha256: 'x' }, { path: 'README.md', kind: 'block' }] }));
   assert.throws(() => uninstall(repo), /never manages/);
 });
+
+test('install and uninstall refuse a symlinked parent of a managed path', async () => {
+  const { symlinkSync, mkdirSync: mk, writeFileSync: w, readFileSync: r } = await import('node:fs');
+  const outside = tempDir();
+  w(join(outside, 'SKILL.md'), 'external');
+  const repo = tempRepo();
+  install(repo, { cloudEntry: true });
+  const { rmSync } = await import('node:fs');
+  rmSync(join(repo, '.agents/skills/stroppers'), { recursive: true });
+  symlinkSync(outside, join(repo, '.agents/skills/stroppers'));
+  assert.throws(() => uninstall(repo), /symlink/);
+  assert.equal(r(join(outside, 'SKILL.md'), 'utf8'), 'external');
+});

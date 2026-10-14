@@ -8,6 +8,20 @@ and lands the PR, deploys where approved, checks the result live, and records
 the evidence in Linear.
 
 It is a set of skills plus a small helper that runs inside your agent session.
+
+## Status of 0.1
+
+Demonstrated in the pilot: plugin loading in Claude Code and Codex; Claude ↔
+Codex review in both directions on subscription sign-ins; Linear approval that
+an agent cannot forge through the Stroppers app; a complete delivery in fresh
+Claude Code sessions (contract, approval, implementation, cross-harness
+review, browser evidence on the PR, merge, re-verification, Done in Linear);
+native Claude Code cloud starts. Not yet demonstrated: a delivery with a real
+deployment and live acceptance, Codex cloud, browser checks inside cloud
+sessions (blocked by the default network allowlist), cross-harness review
+inside a vendor cloud, and the interactive grilling flow. Details:
+[docs/capability-matrix.md](docs/capability-matrix.md) and
+[docs/validation-report.md](docs/validation-report.md).
 There is no server, daemon or hosted controller. Unattended runs use each
 harness's own cloud sessions and schedules.
 
@@ -39,7 +53,7 @@ Claude Code (project scope, so the team gets the same version):
 
 ```sh
 cd your-repo
-claude plugin marketplace add sogamoso/stroppers#v0.1.2 --scope project
+claude plugin marketplace add sogamoso/stroppers#v0.1.8 --scope project
 claude plugin install stroppers@stroppers --scope project
 ```
 
@@ -99,7 +113,11 @@ One way is a private file you source before starting your agent:
 Never give Stroppers a personal key that can write. A comment written with
 your own write key looks exactly like a comment you typed, so an agent holding
 one could approve its own work. `stroppers doctor` blocks delivery if the
-verification key can write as an owner.
+verification key can write as an owner. The same applies to a Linear
+connector or MCP server signed in as an approval owner: Stroppers never writes
+through one, but a session that has one could. Keep owner-signed Linear
+connectors out of delivery sessions (for Claude Code routines, scope the
+routine's connectors) until their attribution has been checked.
 
 ### 3. Set your private operator policy
 
@@ -166,7 +184,7 @@ Ask "Stroppers status for ENG-123" at any time.
 | See where a delivery is | "Stroppers status for ENG-123", or `stroppers checkpoint show` |
 | Pause | "Pause the Stroppers delivery"; it finishes the current step, checkpoints, stops |
 | Stop for good | Comment `stroppers revoke` on the issue, or cancel it |
-| Resume, anywhere | "Continue the Stroppers delivery of ENG-123" in any session, local or cloud, either harness. It restores the checkpoint from Linear and reconciles unfinished actions first |
+| Resume | "Continue the Stroppers delivery of ENG-123" in a new session. It claims the checkpoint from Linear (refusing if another session holds it) and reconciles unfinished actions first. Demonstrated in fresh local Claude Code sessions; see the capability matrix for cloud and Codex |
 | Stress-test a design first | "/stroppers:grill-with-docs" (the upstream name is `grill-with-docs`, not `grill-me-with-docs`), or "/stroppers:grill-me" for decisions that don't need repo docs |
 | Find evidence | PR comments marked "Stroppers verification", the repository's `stroppers-evidence` prerelease, and the Linear checkpoint comment. Local run files are in `.stroppers/artifacts/` (ignored) |
 | Diagnose a blocker | `stroppers doctor`, then `stroppers checkpoint show`; blockers name what clears them |
@@ -234,9 +252,9 @@ path instead of being skipped. Details and current limits:
 claude plugin marketplace update stroppers && claude plugin update stroppers@stroppers --scope project
 node PLUGIN/bin/stroppers update             # refreshes managed files it still owns
 
-# roll back: pin the marketplace to the previous tag and reinstall
+# roll back: pin the marketplace to an earlier release tag and reinstall
 claude plugin marketplace remove stroppers --scope project
-claude plugin marketplace add sogamoso/stroppers#v0.1.1 --scope project
+claude plugin marketplace add sogamoso/stroppers#<earlier tag> --scope project
 claude plugin install stroppers@stroppers --scope project
 
 # uninstall from a repository
