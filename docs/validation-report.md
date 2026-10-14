@@ -1,10 +1,10 @@
-# Validation report: Cheque 0.1 pilot
+# Validation report: `cheque` 0.1 pilot
 
 Pilot date: 2026-10-14. Implementation harness: Claude Code 2.1.287 (Opus 5.5).
 Machine: macOS 27, Node 26. Pilot repository: a private, disposable fixture
 (`cheque-pilot`: a Node price calculator with unit tests, a Playwright
 journey and GitHub Actions CI). Linear: the operator's personal workspace,
-team `PRE`. Production use of Cheque is a separate rollout step recorded at
+team `PRE`. Production use of `cheque` is a separate rollout step recorded at
 the end.
 
 Statuses follow the ledger: **verified** means the check ran and passed with
@@ -24,7 +24,7 @@ exercise behavior, not prompt text:
 | Specialist routing | simple change, docs-only, webhook/auth, dependency, background job, UI component |
 | Quality floor | assertion removed, test deleted, test skipped, threshold loosened, clean change, unusable base reported unverified |
 | Install | idempotent second install; existing content preserved; operator edits never overwritten; conflicts reported; uninstall keeps shared documents and config; update and status |
-| Coexistence | nothing written outside the repository; standalone upstream skills and team instructions untouched; two developers with different private settings; missing config blocks only Cheque; Pstack global model file never written |
+| Coexistence | nothing written outside the repository; standalone upstream skills and team instructions untouched; two developers with different private settings; missing config blocks only `cheque`; Pstack global model file never written |
 | Packaging | version identical across manifests; marketplaces resolve; no broken links outside known upstream ones; no skill name collisions |
 
 `npm run vendor:check` confirms every vendored file matches its pinned commit.
@@ -42,14 +42,14 @@ exercise behavior, not prompt text:
 | 6 | Everyday Chrome isolation | verified: same Chrome process, identical tab ids and URLs before and after a run, no leftover automation processes |
 | 7 | PR evidence publication | verified: video and results uploaded as `cheque-evidence` release assets with run-scoped names; index comment bound to the tested commit; anonymous access 404 on the private repo, authenticated download returns WebM |
 | 8 | Linear binding to the wrong workspace | verified: rejected with the workspace names |
-| 9 | Agent self-approval | verified: an approval line posted by the Cheque agent app was rejected |
+| 9 | Agent self-approval | verified: an approval line posted by the `cheque` agent app was rejected |
 | 10 | Owner approval and scope | verified: owner comment accepted for the exact revision; `merge` authorized, `deploy production` refused as outside scope |
 | 11 | Same grant from both harnesses | verified: Claude Code and Codex sessions both got `authorized: merge` |
 | 12 | Native cloud start (Claude Code routine, run once and run now) | verified: run executed in an Anthropic VM with no local relay; posted results to the PR |
-| 13 | Cloud bootstrap through the committed entry | verified with the Cheque repository attached to the session; blocked without it (GitHub proxy scope) |
+| 13 | Cloud bootstrap through the committed entry | verified with the `cheque` repository attached to the session; blocked without it (GitHub proxy scope) |
 | 14 | Cloud Playwright | blocked: `cdn.playwright.dev` not on the Default environment allowlist; correctly classified as an environment limitation |
 | 15 | Cloud cross-harness review | blocked: Codex CLI absent in Claude cloud; classified `unavailable` |
-| 16 | Natural-language delivery in fresh sessions ("Use Cheque to deliver PRE-5. Ship when verified.") | see below |
+| 16 | Natural-language delivery in fresh sessions ("Use `cheque` to deliver PRE-5. Ship when verified.") | see below |
 
 ## The PRE-5 delivery, run by fresh sessions
 
@@ -72,8 +72,8 @@ Pstack's `create-verification-skill` (vendored, unmodified) generated the
 pilot's `.claude/skills/verify-price-calculator/` skill with a feature map
 (calculator form, price API, health endpoint), ran it end to end once, fixed a
 wrong process id in its launch step and a wrong claim in its map, and opened
-pilot PR #4. The session ran with the Cheque plugin installed but not
-invoked; it behaved as a session without Cheque.
+pilot PR #4. The session ran with the `cheque` plugin installed but not
+invoked; it behaved as a session without `cheque`.
 
 ## Independent review
 

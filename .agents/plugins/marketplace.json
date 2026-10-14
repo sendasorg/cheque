@@ -1,6 +1,6 @@
 {
   "name": "cheque",
-  "interface": { "displayName": "Cheque" },
+  "interface": { "displayName": "cheque" },
   "plugins": [
     {
       "name": "cheque",

@@ -1,12 +1,12 @@
 ---
 name: cheque
-description: Deliver an approved Linear issue with Cheque in a cloud session where the Cheque plugin is not installed. Use when asked to "use Cheque", "deliver <issue> with Cheque", or to continue a Cheque checkpoint.
+description: Deliver an approved Linear issue with `cheque` in a cloud session where the `cheque` plugin is not installed. Use when asked to "use `cheque`", "deliver <issue> with `cheque`", or to continue a `cheque` checkpoint.
 ---
 
-# Cheque (cloud entry)
+# `cheque` (cloud entry)
 
 This thin entry exists because cloud sessions load skills committed to the
-repository but not plugins. It loads the pinned Cheque package and hands
+repository but not plugins. It loads the pinned `cheque` package and hands
 over to its entry point.
 
 1. If a `cheque:deliver` skill is available in this session, use it and stop reading here.

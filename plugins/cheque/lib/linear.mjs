@@ -1,6 +1,6 @@
 // Linear access. Reads (approval verification, checkpoint recovery) use the
 // read-only key named by `linear.credential_env`. Writes (contract, checkpoint,
-// evidence, status) use the Cheque OAuth app further below, never a
+// evidence, status) use the cheque OAuth app further below, never a
 // connector or a personal key, so no agent write can pass as an owner's.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from 'node:fs';
@@ -90,7 +90,7 @@ export async function fetchIssue(config, issueKey, env, fetchImpl) {
   };
 }
 
-// Agent writes. Cheque writes to Linear only as its own OAuth application
+// Agent writes. cheque writes to Linear only as its own OAuth application
 // (client credentials, actor=app), so every agent-written comment is
 // attributed to the app and can never pass as an owner's approval. The token
 // is minted on demand, cached in ignored state and never printed.
@@ -100,7 +100,7 @@ const TOKEN_URL = 'https://api.linear.app/oauth/token';
 export async function agentToken(config, env, stateDir, fetchImpl = fetch) {
   const id = env[config.linear?.agent_client_id_env];
   const secret = env[config.linear?.agent_client_secret_env];
-  if (!id || !secret) throw new LinearError(`${config.linear?.agent_client_id_env} and ${config.linear?.agent_client_secret_env} must be set to write to Linear as the Cheque agent`);
+  if (!id || !secret) throw new LinearError(`${config.linear?.agent_client_id_env} and ${config.linear?.agent_client_secret_env} must be set to write to Linear as the cheque agent`);
   const cache = join(stateDir, 'linear-agent-token.json');
   if (existsSync(cache)) {
     const c = JSON.parse(readFileSync(cache, 'utf8'));
@@ -126,7 +126,7 @@ export async function checkAgent(config, env, stateDir, owners = [], fetchImpl) 
   const want = config.linear.workspace;
   if (data.organization.id !== want && data.organization.urlKey !== want)
     throw new LinearError(`agent app is installed in workspace ${data.organization.urlKey}, but this repository is bound to ${want}`);
-  if (owners.includes(data.viewer.id) || !data.viewer.app) throw new LinearError('the agent credential acts as a person, not as the Cheque app; recreate it with actor=app');
+  if (owners.includes(data.viewer.id) || !data.viewer.app) throw new LinearError('the agent credential acts as a person, not as the cheque app; recreate it with actor=app');
   return { token, agent_id: data.viewer.id };
 }
 
@@ -161,7 +161,7 @@ export async function setIssueState(config, env, stateDir, issueKey, stateName, 
 }
 
 // The authoritative checkpoint for this repository: the latest checkpoint
-// comment written by the Cheque app itself (not by a person or another
+// comment written by the cheque app itself (not by a person or another
 // integration) whose task names this repository.
 export async function latestCheckpointComment(config, env, stateDir, issueKey, repository, fetchImpl) {
   const { agent_id } = await checkAgent(config, env, stateDir, (config.authority?.owners || []).map((o) => o.linear_user_id), fetchImpl);

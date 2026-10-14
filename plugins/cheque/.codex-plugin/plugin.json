@@ -8,9 +8,9 @@
   "license": "MIT",
   "skills": "./skills/",
   "interface": {
-    "displayName": "Cheque",
+    "displayName": "cheque",
     "shortDescription": "Approved-issue delivery through Pstack with cross-harness review",
-    "developerName": "Cheque contributors",
+    "developerName": "cheque contributors",
     "category": "Developer Tools",
     "capabilities": ["Read", "Write"],
     "websiteURL": "https://github.com/sendasorg/cheque"

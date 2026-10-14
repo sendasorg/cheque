@@ -1,7 +1,7 @@
 {
   "name": "cheque",
   "owner": { "name": "sogamoso" },
-  "description": "Cheque: approved-issue delivery through Pstack for Claude Code and Codex.",
+  "description": "cheque: approved-issue delivery through Pstack for Claude Code and Codex.",
   "plugins": [
     {
       "name": "cheque",

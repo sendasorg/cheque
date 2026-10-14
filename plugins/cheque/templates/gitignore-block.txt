@@ -1,4 +1,4 @@
-# Cheque runtime state, run artifacts and private overrides
+# cheque runtime state, run artifacts and private overrides
 .cheque/state/
 .cheque/artifacts/
 .cheque/config.local.yaml

@@ -1,4 +1,4 @@
-# Cheque Implementation Plan
+# `cheque` Implementation Plan
 
 > **For agentic workers:** implement stage by stage; each stage ends with
 > inspectable files and ledger evidence (R-131). The ledger is
@@ -11,7 +11,7 @@ checks, cross-harness review, PR, merge and live acceptance, with portable
 checkpoints and no hosted infrastructure.
 
 **Architecture:** One plugin directory with both harness manifests,
-Cheque-owned skills (public entry `deliver`, plus grilling wrappers) and
+`cheque`-owned skills (public entry `deliver`, plus grilling wrappers) and
 a zero-dependency Node helper CLI (`bin/cheque`) for the deterministic
 parts: config resolution, reviewer selection and invocation, checkpoint
 and approval records, Playwright preparation and evidence indexing.
@@ -64,7 +64,7 @@ repo).
 - `parseYaml(text) -> object` — strict subset (maps, lists, scalars, comments); throws `YamlError(line, msg)` on anything else.
 - `resolveConfig({packageDefaults, operatorPath, repoPath, localPath, taskExceptions}) -> {effective, sources, errors}`; repo/local/task layers may not set `authority.*` keys except where the operator layer permits; unknown keys error.
 - CLI: `cheque config validate|explain [--json]` — explain prints effective config with credential refs as names only.
-- [ ] Tests: precedence order; repo layer widening `authority.owners` rejected; unknown key rejected; missing Linear binding blocks only Cheque ops (exit 3, message names the key).
+- [ ] Tests: precedence order; repo layer widening `authority.owners` rejected; unknown key rejected; missing Linear binding blocks only `cheque` ops (exit 3, message names the key).
 
 ### Stage 4 — Harness routing and review (R-059..R-068)
 

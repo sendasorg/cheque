@@ -1,6 +1,6 @@
 // Runs Addy Osmani's floor guard exactly as published: the reference
 // implementation is extracted from the vendored floor-guard.md at run time,
-// so Cheque never maintains a second copy of the rules.
+// so cheque never maintains a second copy of the rules.
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';

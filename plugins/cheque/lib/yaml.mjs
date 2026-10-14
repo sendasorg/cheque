@@ -1,4 +1,4 @@
-// Strict YAML subset for Cheque config files: block mappings, block
+// Strict YAML subset for cheque config files: block mappings, block
 // sequences of scalars or mappings, plain/quoted scalars, comments. Anything
 // else (anchors, tags, flow collections, multi-line scalars) is rejected so a
 // config never parses into something different from what it looks like.

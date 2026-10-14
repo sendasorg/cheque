@@ -277,14 +277,14 @@ function semanticErrors(c) {
   return errors;
 }
 
-// Requirements that only Cheque delivery operations need. A missing value
-// blocks Cheque work with a specific message; it never affects upstream skills.
+// Requirements that only cheque delivery operations need. A missing value
+// blocks cheque work with a specific message; it never affects upstream skills.
 export function deliveryBlockers(c) {
   const blockers = [];
   if (!c.linear?.workspace) blockers.push('linear.workspace is not set: bind this repository to one Linear workspace in .cheque/config.yaml');
   if (!c.linear?.team) blockers.push('linear.team is not set');
   if (!c.linear?.credential_env) blockers.push('linear.credential_env is not set: name the environment variable that holds a read-only Linear API key');
-  if (!c.linear?.agent_client_id_env || !c.linear?.agent_client_secret_env) blockers.push('linear.agent_client_id_env / agent_client_secret_env are not set: name the variables holding the Cheque agent OAuth app credentials');
+  if (!c.linear?.agent_client_id_env || !c.linear?.agent_client_secret_env) blockers.push('linear.agent_client_id_env / agent_client_secret_env are not set: name the variables holding the cheque agent OAuth app credentials');
   if (!c.authority?.owners?.length) blockers.push('authority.owners is empty: configure approval owners in private operator config');
   if (!c.authority?.repositories?.length) blockers.push('authority.repositories is empty: list the repositories delivery may change');
   return blockers;

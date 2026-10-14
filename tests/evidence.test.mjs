@@ -55,7 +55,7 @@ test('a browser run passes only with a clean exit, a passing test, no failures a
   assert.equal(runStatus({ code: 1, tests: [{ status: 'failed' }], clean: true }).status, 'failed');
 });
 
-test('uninstall refuses a manifest that names files Cheque never manages', () => {
+test('uninstall refuses a manifest that names files cheque never manages', () => {
   const repo = tempRepo({ 'README.md': 'keep\n' });
   install(repo);
   write(repo, '.cheque/managed.json', JSON.stringify({ version: '0', items: [{ path: '../other/README.md', kind: 'file', sha256: 'x' }, { path: 'README.md', kind: 'block' }] }));

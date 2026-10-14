@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Cheque helper CLI. Session-invoked only: every command runs, prints a
+// cheque helper CLI. Session-invoked only: every command runs, prints a
 // result and exits. Exit codes: 0 ok, 1 failed or blocked, 2 usage, 3 configuration.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -40,7 +40,7 @@ const USAGE = `cheque ${PACKAGE_VERSION}
   checkpoint finding <finding-id> --disposition accepted|dismissed --reason <text>
   checkpoint lease <holder>
   linear show [--issue <KEY>]                read the issue and its comments (read-only key)
-  linear post contract|checkpoint|evidence [--file <md>] [--issue <KEY>]   write as the Cheque agent app
+  linear post contract|checkpoint|evidence [--file <md>] [--issue <KEY>]   write as the cheque agent app
   linear status <status name> [--issue <KEY>]
   approval verify [--issue <KEY>]           read approval from the bound Linear workspace
   approval authorize <action> [--repository owner/name] [--environment <env>]
@@ -225,7 +225,7 @@ const commands = {
       if (!issueKey) fail('checkpoint claim needs --issue', 2);
       const repository = repoSlug(repoRoot());
       const comment = await latestCheckpointComment(effective, process.env, stateDir(), issueKey, repository);
-      if (!comment) fail(`no Cheque checkpoint for ${repository} on ${issueKey}`);
+      if (!comment) fail(`no cheque checkpoint for ${repository} on ${issueKey}`);
       const c = cp.parse(comment.body);
       const problems = cp.validateRestored(c, { repository });
       if (problems.length) fail(`checkpoint on ${issueKey} is not usable: ${problems.join('; ')}`);
@@ -241,7 +241,7 @@ const commands = {
     }
     if (sub === 'restore') {
       const c = cp.parse(readInput(opt.file || '-').trim());
-      if (!c) fail('input is not a Cheque checkpoint comment');
+      if (!c) fail('input is not a cheque checkpoint comment');
       const problems = cp.validateRestored(c, { repository: repoSlug(repoRoot()) });
       if (problems.length) fail(`checkpoint is not usable: ${problems.join('; ')}`);
       saveCheckpoint(c);

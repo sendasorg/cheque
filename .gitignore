@@ -1,7 +1,7 @@
 node_modules/
 .DS_Store
 *.log
-# Cheque runtime state, run artifacts and private overrides (dogfooding)
+# cheque runtime state, run artifacts and private overrides (dogfooding)
 .cheque/state/
 .cheque/artifacts/
 .cheque/config.local.yaml

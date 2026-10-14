@@ -1,7 +1,7 @@
-# Cheque
+# `cheque`
 
-Cheque is a plugin for Claude Code and Codex that takes a Linear issue from
-an approved contract to verified delivery. You say "Use Cheque to deliver
+`cheque` is a plugin for Claude Code and Codex that takes a Linear issue from
+an approved contract to verified delivery. You say "Use `cheque` to deliver
 ENG-123. Ship when verified." The agent drafts a delivery contract on the
 issue, waits for you to approve it once, then builds, reviews, verifies, opens
 and lands the PR, deploys where approved, checks the result live, and records
@@ -13,7 +13,7 @@ It is a set of skills plus a small helper that runs inside your agent session.
 
 Demonstrated in the pilot: plugin loading in Claude Code and Codex; Claude ↔
 Codex review in both directions on subscription sign-ins; Linear approval that
-an agent cannot forge through the Cheque app; a complete delivery in fresh
+an agent cannot forge through the `cheque` app; a complete delivery in fresh
 Claude Code sessions (contract, approval, implementation, cross-harness
 review, browser evidence on the PR, merge, re-verification, Done in Linear);
 native Claude Code cloud starts. Not yet demonstrated: a delivery with a real
@@ -27,8 +27,8 @@ harness's own cloud sessions and schedules.
 
 ## What does what
 
-- **[Pstack](https://github.com/backnotprop/pstack)** (Lauren Tan's engineering skills) does the engineering: planning, implementation playbooks, its own review and repair loop, PR babysitting and shipping. Cheque does not replace any of it.
-- **Cheque** adds what Pstack leaves to the operator:
+- **[Pstack](https://github.com/backnotprop/pstack)** (Lauren Tan's engineering skills) does the engineering: planning, implementation playbooks, its own review and repair loop, PR babysitting and shipping. `cheque` does not replace any of it.
+- **`cheque`** adds what Pstack leaves to the operator:
   - a delivery contract per issue, approved once by an owner in Linear;
   - review by a different harness than the one that implemented (Claude Code implements, Codex reviews, or the reverse);
   - specialist checks only when the change calls for them: a quality floor on every change, and security, observability and release readiness when triggered (adapted from [Addy Osmani's agent skills](https://github.com/addyosmani/agent-skills));
@@ -39,7 +39,7 @@ harness's own cloud sessions and schedules.
 
 ## Requirements
 
-- Claude Code 2.1 or later signed in with a claude.ai subscription, and/or Codex CLI 0.162 or later signed in with ChatGPT. Cheque never uses API-key billing; it removes API keys from reviewer processes and refuses API-key sign-ins.
+- Claude Code 2.1 or later signed in with a claude.ai subscription, and/or Codex CLI 0.162 or later signed in with ChatGPT. `cheque` never uses API-key billing; it removes API keys from reviewer processes and refuses API-key sign-ins.
 - For cross-harness review, both CLIs installed and signed in where the review runs.
 - Node.js 20 or later, `git`, and the GitHub CLI `gh` signed in.
 - A Linear workspace where you can create an OAuth application and a personal API key.
@@ -65,19 +65,19 @@ codex plugin add cheque@cheque
 ```
 
 Both register the namespaced skills `cheque:deliver`, `cheque:grill-with-docs`
-and `cheque:grill-me`. Cheque bundles its own pinned copies of Pstack and
+and `cheque:grill-me`. `cheque` bundles its own pinned copies of Pstack and
 the other skills and never registers them, so it works without separate
 installs and never shadows a version you installed yourself.
 
-Then add the Cheque files to the repository. The helper lives in the
+Then add the `cheque` files to the repository. The helper lives in the
 plugin; `PLUGIN` below is the installed plugin directory (Claude Code:
 `~/.claude/plugins/cache/cheque/cheque/<version>`; Codex:
 `~/.codex/plugins/cache/cheque/cheque/<version>`), or the
-`plugins/cheque` directory of a Cheque checkout:
+`plugins/cheque` directory of a `cheque` checkout:
 
 ```sh
 node PLUGIN/bin/cheque install            # add --cloud-entry for cloud sessions
-git add .cheque .gitignore && git commit -m "Set up Cheque"
+git add .cheque .gitignore && git commit -m "Set up cheque"
 ```
 
 This creates `.cheque/config.yaml`, `.cheque/README.md` and a marked
@@ -95,8 +95,8 @@ linear:
 
 In that Linear workspace, create two credentials once:
 
-1. **Agent app.** Settings > API > OAuth applications > New. Name it (for example "Cheque agent"), enter any callback URL, enable client credentials, and give it read and write access. Cheque writes every contract, checkpoint and evidence comment as this app.
-2. **Read-only key.** Settings > Security & access > Personal API keys, read-only. Cheque reads approvals with it.
+1. **Agent app.** Settings > API > OAuth applications > New. Name it (for example "`cheque` agent"), enter any callback URL, enable client credentials, and give it read and write access. `cheque` writes every contract, checkpoint and evidence comment as this app.
+2. **Read-only key.** Settings > Security & access > Personal API keys, read-only. `cheque` reads approvals with it.
 
 Keep them out of the repository. Provide them as environment variables (the
 names are configurable in `linear.*_env`):
@@ -110,11 +110,11 @@ CHEQUE_LINEAR_AGENT_CLIENT_SECRET=<app client secret>
 One way is a private file you source before starting your agent:
 `set -a; . ~/.config/cheque/<workspace>.env; set +a` (create it with mode 600).
 
-Never give Cheque a personal key that can write. A comment written with
+Never give `cheque` a personal key that can write. A comment written with
 your own write key looks exactly like a comment you typed, so an agent holding
 one could approve its own work. `cheque doctor` blocks delivery if the
 verification key can write as an owner. The same applies to a Linear
-connector or MCP server signed in as an approval owner: Cheque never writes
+connector or MCP server signed in as an approval owner: `cheque` never writes
 through one, but a session that has one could. Keep owner-signed Linear
 connectors out of delivery sessions (for Claude Code routines, scope the
 routine's connectors) until their attribution has been checked.
@@ -154,8 +154,8 @@ wrong workspace, a writable owner key, a harness that is not signed in.
 
 ## Your first delivery
 
-1. **Ask.** In Claude Code or Codex, in the repository: "Use Cheque to deliver ENG-123. Ship when verified." (The skill is also available as `/cheque:deliver`.) To pick the reviewer explicitly, add "Review with Codex" or "Review with Claude".
-2. **Read the contract.** The agent reads the issue and posts a "Cheque delivery contract" comment: outcome, acceptance criteria, scope, repositories, environments, deployment and recovery. It also posts a checkpoint comment and tells you the approval line.
+1. **Ask.** In Claude Code or Codex, in the repository: "Use `cheque` to deliver ENG-123. Ship when verified." (The skill is also available as `/cheque:deliver`.) To pick the reviewer explicitly, add "Review with Codex" or "Review with Claude".
+2. **Read the contract.** The agent reads the issue and posts a "`cheque` delivery contract" comment: outcome, acceptance criteria, scope, repositories, environments, deployment and recovery. It also posts a checkpoint comment and tells you the approval line.
 3. **Approve once.** If the contract is right, comment exactly the line it shows:
 
    ```
@@ -165,28 +165,28 @@ wrong workspace, a writable owner key, a harness that is not signed in.
    That approves this revision only. `cheque revoke` withdraws it. If the agent later needs more scope, it posts a new revision and waits for `cheque extend sha256:<revision>`. It continues unrelated in-scope work meanwhile.
 4. **Let it run.** The agent plans with Pstack, runs the triggered specialist checks and the quality floor, implements, gets a review from the other harness, fixes accepted findings, and opens the PR. Your repository's required checks and required human reviews still apply. Approval does not bypass them.
 
-   Your harness's own permission policy applies too. Claude Code's auto mode refuses to merge without a human review even when Linear approval covers it. If you want Cheque to land approved work itself, allow the command deliberately, for example in `.claude/settings.local.json`:
+   Your harness's own permission policy applies too. Claude Code's auto mode refuses to merge without a human review even when Linear approval covers it. If you want `cheque` to land approved work itself, allow the command deliberately, for example in `.claude/settings.local.json`:
 
    ```json
    { "permissions": { "allow": ["Bash(gh pr merge:*)"] } }
    ```
 
    Otherwise the agent stops at "ready to merge" and you merge.
-5. **Inspect the PR.** Browser changes get a "Cheque verification" comment with the tested revision, executor, per-criterion outcomes and links to the recorded videos. Backend and docs changes get the checks that fit them instead.
+5. **Inspect the PR.** Browser changes get a "`cheque` verification" comment with the tested revision, executor, per-criterion outcomes and links to the recorded videos. Backend and docs changes get the checks that fit them instead.
 6. **Delivery.** After merge, and deployment where the contract includes one, the agent runs the live acceptance checks and posts the results to Linear. It closes the issue only when every criterion has passed. Anything still unverified, or waiting on an observation window or your judgment, stays open and listed.
 
-Ask "Cheque status for ENG-123" at any time.
+Ask "`cheque` status for ENG-123" at any time.
 
 ## Everyday operation
 
 | You want to | Do |
 | --- | --- |
-| See where a delivery is | "Cheque status for ENG-123", or `cheque checkpoint show` |
-| Pause | "Pause the Cheque delivery"; it finishes the current step, checkpoints, stops |
+| See where a delivery is | "`cheque` status for ENG-123", or `cheque checkpoint show` |
+| Pause | "Pause the `cheque` delivery"; it finishes the current step, checkpoints, stops |
 | Stop for good | Comment `cheque revoke` on the issue, or cancel it |
-| Resume | "Continue the Cheque delivery of ENG-123" in a new session. It claims the checkpoint from Linear (refusing if another session holds it) and reconciles unfinished actions first. Demonstrated in fresh local Claude Code sessions; see the capability matrix for cloud and Codex |
+| Resume | "Continue the `cheque` delivery of ENG-123" in a new session. It claims the checkpoint from Linear (refusing if another session holds it) and reconciles unfinished actions first. Demonstrated in fresh local Claude Code sessions; see the capability matrix for cloud and Codex |
 | Stress-test a design first | "/cheque:grill-with-docs" (the upstream name is `grill-with-docs`, not `grill-me-with-docs`), or "/cheque:grill-me" for decisions that don't need repo docs |
-| Find evidence | PR comments marked "Cheque verification", the repository's `cheque-evidence` prerelease, and the Linear checkpoint comment. Local run files are in `.cheque/artifacts/` (ignored) |
+| Find evidence | PR comments marked "`cheque` verification", the repository's `cheque-evidence` prerelease, and the Linear checkpoint comment. Local run files are in `.cheque/artifacts/` (ignored) |
 | Diagnose a blocker | `cheque doctor`, then `cheque checkpoint show`; blockers name what clears them |
 
 Recovery is bounded. Three unsuccessful fix-and-verify cycles on the same
@@ -230,10 +230,10 @@ Full reference: [docs/configuration.md](docs/configuration.md).
 
 ## Unattended runs
 
-Cheque runs only inside a harness session. For work that continues while
+`cheque` runs only inside a harness session. For work that continues while
 your laptop is closed, start it in a cloud session:
 
-- **Claude Code.** `claude --cloud "Use Cheque to deliver ENG-123"`, or a [routine](https://code.claude.com/docs/en/routines) (schedule, API or GitHub trigger). Cloud sessions don't install plugins, so run `cheque install --cloud-entry` in the repository. Attach `sendasorg/cheque` to the session if it is private for you. In the cloud environment:
+- **Claude Code.** `claude --cloud "Use cheque to deliver ENG-123"`, or a [routine](https://code.claude.com/docs/en/routines) (schedule, API or GitHub trigger). Cloud sessions don't install plugins, so run `cheque install --cloud-entry` in the repository. Attach `sendasorg/cheque` to the session if it is private for you. In the cloud environment:
   - set the three Linear variables and `CHEQUE_OPERATOR_CONFIG_YAML` (the content of your operator.yaml);
   - allow `api.linear.app`, `cdn.playwright.dev` and `playwright.download.prss.microsoft.com` under Custom network access;
   - scope the routine's connectors to what it needs.
@@ -262,7 +262,7 @@ node PLUGIN/bin/cheque uninstall
 claude plugin uninstall cheque@cheque --scope project
 ```
 
-`uninstall` removes only files and blocks Cheque created and that nobody has
+`uninstall` removes only files and blocks `cheque` created and that nobody has
 edited since. It always keeps `.cheque/config.yaml` and shared documents
 (constraints, glossary, ADRs, verification skills), and reports anything it
 left in place. Active deliveries keep their checkpoints in Linear and can
@@ -270,9 +270,9 @@ resume after reinstalling.
 
 ## Coexistence
 
-Teammates who don't use Cheque aren't affected:
+Teammates who don't use `cheque` aren't affected:
 
-- Cheque registers only namespaced skills and installs no hooks; the always-loaded cost is about 230 tokens.
+- `cheque` registers only namespaced skills and installs no hooks; the always-loaded cost is about 230 tokens.
 - It reads Pstack's model settings without writing `~/.agents/pstack-models.md`; its own model map stays in the session.
 - Shared documents stay in their usual places (`CONSTRAINTS.md`, `GLOSSARY.md`, `docs/adr/`, `.claude/skills/verify-*`) and work with the upstream skills alone.
 - Symlinks are not used.
@@ -291,7 +291,7 @@ tested.
 | Browser `unverified (environment)` | Run `cheque browser prepare`; in cloud, allow the Playwright download hosts |
 | Plugin changes not picked up | Harnesses cache by version: update the marketplace and the plugin, or reinstall |
 | Agent stops at "ready to merge" with a permission denial | The harness blocked the merge. Merge yourself, or allow `Bash(gh pr merge:*)` for the repository |
-| `HTTP 403: GitHub GraphQL is not available` in cloud | Expected; Cheque uses REST. Avoid `gh pr comment` in custom steps |
+| `HTTP 403: GitHub GraphQL is not available` in cloud | Expected; `cheque` uses REST. Avoid `gh pr comment` in custom steps |
 
 ## Contributing
 

@@ -95,5 +95,5 @@
       }
     }
   },
-  "title": "Cheque review findings (derived from openai/codex-plugin-cc review-output.schema.json, Apache-2.0)"
+  "title": "cheque review findings (derived from openai/codex-plugin-cc review-output.schema.json, Apache-2.0)"
 }

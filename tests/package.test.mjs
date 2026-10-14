@@ -24,7 +24,7 @@ function walk(dir) {
   return readdirSync(dir).flatMap((e) => (statSync(join(dir, e)).isDirectory() ? walk(join(dir, e)) : [join(dir, e)]));
 }
 
-test('every relative link in Cheque skills and vendored skills resolves', () => {
+test('every relative link in cheque skills and vendored skills resolves', () => {
   const broken = [];
   const files = walk(join(root, 'plugins/cheque')).filter((f) => f.endsWith('.md'));
   for (const f of files) {
@@ -42,7 +42,7 @@ test('every relative link in Cheque skills and vendored skills resolves', () => 
   assert.ok(known.length < 25, `pstack broken links grew: ${known.length}`);
 });
 
-test('no Cheque skill name collides with a vendored upstream skill name', () => {
+test('no cheque skill name collides with a vendored upstream skill name', () => {
   const own = readdirSync(join(root, 'plugins/cheque/skills'));
   // Own skills are namespaced by the plugin (cheque:<name>) in both harnesses;
   // vendored skills are never registered, so bare upstream names stay free.

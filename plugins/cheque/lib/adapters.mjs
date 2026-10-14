@@ -106,7 +106,7 @@ export const ADAPTERS = {
       if (r.error) return { ok: false, unavailable: true, reason: `codex CLI not available: ${r.error.message}` };
       const text = `${r.stdout}${r.stderr}`;
       if (/ChatGPT|access token/i.test(text) && r.status === 0) return { ok: true, mode: text.trim() };
-      if (/API key/i.test(text)) return { ok: false, reason: 'codex is signed in with an API key; Cheque only uses subscription sign-in' };
+      if (/API key/i.test(text)) return { ok: false, reason: 'codex is signed in with an API key; cheque only uses subscription sign-in' };
       return { ok: false, reason: `codex is not signed in: ${text.trim()}` };
     },
     command({ schemaPath, outputPath }) {

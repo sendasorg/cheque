@@ -1,6 +1,6 @@
 # Native harness capability matrix
 
-What each harness actually does for Cheque, as demonstrated during the
+What each harness actually does for `cheque`, as demonstrated during the
 0.1 pilot (2026-10-14) with Claude Code 2.1.287 and Codex CLI 0.162.1 on
 macOS, and in Claude Code cloud sessions (Ubuntu, Node 22). Every cell is one of:
 
@@ -9,7 +9,7 @@ macOS, and in Claude Code cloud sessions (Ubuntu, Node 22). Every cell is one of
 - **blocked**: tried or analyzed and it does not work without a change named in the cell.
 - **not supported**: the harness does not offer it.
 
-Cheque adds no hosted service. Anything below that needs a server would be
+`cheque` adds no hosted service. Anything below that needs a server would be
 reported as blocked, not built.
 
 ## Plugin loading
@@ -17,7 +17,7 @@ reported as blocked, not built.
 | Path | Claude Code | Codex |
 | --- | --- | --- |
 | Local, project scope | demonstrated: `claude plugin marketplace add sendasorg/cheque#<ref> --scope project` then `claude plugin install cheque@cheque --scope project`; skills `cheque:deliver`, `cheque:grill-with-docs`, `cheque:grill-me`; ~226 always-on tokens, no hooks | demonstrated: `codex plugin marketplace add <source>` then `codex plugin add cheque@cheque`; same namespaced skill names, plugin cached with `bin/`, `lib/` and `vendor/` intact |
-| Cloud session | blocked for plugins: cloud sessions do not install plugins enabled in a repository's `.claude/settings.json` (official docs, "What carries over"). Demonstrated alternative: the committed thin entry `.claude/skills/cheque/` bootstraps the pinned package; the Cheque repository must be attached to the session (private repo) or public | documented: repository skills are available in cloud tasks; plugin loading in cloud tasks is not documented. Thin entry `.agents/skills/cheque/` provided; not exercised (see Codex cloud below) |
+| Cloud session | blocked for plugins: cloud sessions do not install plugins enabled in a repository's `.claude/settings.json` (official docs, "What carries over"). Demonstrated alternative: the committed thin entry `.claude/skills/cheque/` bootstraps the pinned package; the `cheque` repository must be attached to the session (private repo) or public | documented: repository skills are available in cloud tasks; plugin loading in cloud tasks is not documented. Thin entry `.agents/skills/cheque/` provided; not exercised (see Codex cloud below) |
 | Upstream skills not shadowed | demonstrated: vendored Pstack/Addy/Matt skills are never registered, only read by path | demonstrated: same |
 
 ## Subscription authentication and cross-harness review
@@ -39,15 +39,15 @@ reported as blocked, not built.
 | Manual run / API | demonstrated: routine "run now"; API `/fire` documented (bearer token per routine, beta header); fire text arrives as untrusted data | documented: `codex cloud exec --env <id>` submits a cloud task |
 | GitHub event | documented: routine GitHub triggers on pull request and release events (Claude GitHub App required; hourly caps; events beyond cap dropped) | documented: web scheduled tasks on PR activity; Codex GitHub code review observed active on the pilot repository |
 | Laptop asleep | demonstrated in the sense that the run executed entirely in the vendor VM with no local relay; the lid was not physically closed during the pilot | not exercised |
-| Duplicate/dropped events | documented: each GitHub event starts an independent session; caps drop excess events. Cheque' action journal and lease make repeats safe (unit-tested) | documented: close events may be combined into one run |
+| Duplicate/dropped events | documented: each GitHub event starts an independent session; caps drop excess events. `cheque`'s action journal and lease make repeats safe (unit-tested) | documented: close events may be combined into one run |
 
 ## Cloud execution environment
 
 | Need | Claude Code cloud | Codex cloud |
 | --- | --- | --- |
-| Git and PR access | demonstrated through the GitHub proxy for repositories attached to the session; GitHub GraphQL is refused (`HTTP 403`), so Cheque uses REST | documented: GitHub connection per environment |
-| Second private repository (Cheque itself) | demonstrated: works only when attached as a session source | not exercised |
-| Playwright browsers | blocked on the Default environment: `cdn.playwright.dev` is not on the Trusted allowlist (403). Fix: Custom network access adding `cdn.playwright.dev` and `playwright.download.prss.microsoft.com`, or a setup script on an environment that allows them. Classified by Cheque as an environment limitation, not a product failure | documented limitation: "computer and browser use" listed as not currently supported; package installs only in setup |
+| Git and PR access | demonstrated through the GitHub proxy for repositories attached to the session; GitHub GraphQL is refused (`HTTP 403`), so `cheque` uses REST | documented: GitHub connection per environment |
+| Second private repository (`cheque` itself) | demonstrated: works only when attached as a session source | not exercised |
+| Playwright browsers | blocked on the Default environment: `cdn.playwright.dev` is not on the Trusted allowlist (403). Fix: Custom network access adding `cdn.playwright.dev` and `playwright.download.prss.microsoft.com`, or a setup script on an environment that allows them. Classified by `cheque` as an environment limitation, not a product failure | documented limitation: "computer and browser use" listed as not currently supported; package installs only in setup |
 | System libraries (apt) | documented: setup scripts run as root on Ubuntu 24.04 | documented: setup phase has internet |
 | Linear credentials | documented: environment variables (visible to environment users on Team/Enterprise) or network secrets (Pro/Max) | documented: network secrets substituted by proxy |
 | Evidence export before teardown | demonstrated locally via REST release assets and PR comment; cloud export pending the browser allowlist | not exercised |
@@ -59,7 +59,7 @@ reported as blocked, not built.
 | --- | --- |
 | Per-repository workspace binding | demonstrated: a key for another workspace is rejected ("credential authenticates to workspace other-workspace, but this repository is bound to my-workspace", names changed) |
 | Owner approval read with a read-only key | demonstrated: owner comment approving the contract revision verified as `approved`, actor matched by user id |
-| Agent cannot self-authorize | demonstrated: an approval line posted by the Cheque agent app was rejected ("not a configured approval owner"); a comment written with an owner's personal write key is indistinguishable from the owner's (same user id, no `botActor`), which is why agents never hold one |
+| Agent cannot self-authorize | demonstrated: an approval line posted by the `cheque` agent app was rejected ("not a configured approval owner"); a comment written with an owner's personal write key is indistinguishable from the owner's (same user id, no `botActor`), which is why agents never hold one |
 | Both harnesses honor the same grant | demonstrated: Claude Code and Codex sessions both returned `authorized: merge` from the same Linear record |
 | Scope enforcement | demonstrated: `deploy --environment production` refused outside the approved environments |
 

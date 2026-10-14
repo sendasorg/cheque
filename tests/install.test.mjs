@@ -45,7 +45,7 @@ test('a modified managed file is reported as a conflict, not overwritten', () =>
   assert.equal(read(repo, '.cheque/README.md'), 'our own notes\n');
 });
 
-test('a pre-existing file Cheque did not create is left alone', () => {
+test('a pre-existing file cheque did not create is left alone', () => {
   const repo = tempRepo({ '.claude/skills/cheque/SKILL.md': 'someone else\n' });
   const r = install(repo, { cloudEntry: true });
   assert.ok(r.conflicts.some((c) => c.startsWith('.claude/skills/cheque/SKILL.md')));

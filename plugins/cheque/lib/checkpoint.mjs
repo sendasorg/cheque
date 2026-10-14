@@ -72,11 +72,11 @@ export function taskKey(cp) {
 }
 
 export function render(cp) {
-  return `${MARKER}\n**Cheque checkpoint** · stage \`${cp.stage}\`${cp.blocked_reason ? ` · blocked: ${cp.blocked_reason}` : ''} · head \`${cp.revision.head?.slice(0, 12) || 'none'}\`\n\n\`\`\`json\n${JSON.stringify(cp, null, 2)}\n\`\`\`\n`;
+  return `${MARKER}\n**cheque checkpoint** · stage \`${cp.stage}\`${cp.blocked_reason ? ` · blocked: ${cp.blocked_reason}` : ''} · head \`${cp.revision.head?.slice(0, 12) || 'none'}\`\n\n\`\`\`json\n${JSON.stringify(cp, null, 2)}\n\`\`\`\n`;
 }
 
 export function renderContract(contract) {
-  return `${CONTRACT_MARKER}\n**Cheque delivery contract** · revision \`${contractHash(contract)}\`\n\nTo approve autonomous delivery of exactly this contract, the approval owner comments:\n\n    cheque approve ${contractHash(contract)}\n\nTo revoke later: \`cheque revoke\`.\n\n\`\`\`json\n${JSON.stringify(contract, null, 2)}\n\`\`\`\n`;
+  return `${CONTRACT_MARKER}\n**cheque delivery contract** · revision \`${contractHash(contract)}\`\n\nTo approve autonomous delivery of exactly this contract, the approval owner comments:\n\n    cheque approve ${contractHash(contract)}\n\nTo revoke later: \`cheque revoke\`.\n\n\`\`\`json\n${JSON.stringify(contract, null, 2)}\n\`\`\`\n`;
 }
 
 function fencedJson(body) {

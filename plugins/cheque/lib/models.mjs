@@ -1,5 +1,5 @@
 // Session model map for Pstack. Pstack reads model routing only from
-// user-global files (~/.agents/pstack-models.md, ~/.cursor/rules/...). Cheque
+// user-global files (~/.agents/pstack-models.md, ~/.cursor/rules/...). cheque
 // never writes those; it renders its own resolved map into ignored session
 // state, and the entry point tells the session to use it in their place.
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -29,7 +29,7 @@ export const PSTACK_ROLES = [
 
 export function renderModelMap(config) {
   const chosen = config.pstack?.models || {};
-  const lines = ['# Cheque session model map for Pstack (generated; do not edit)', '# budget: inherit'];
+  const lines = ['# cheque session model map for Pstack (generated; do not edit)', '# budget: inherit'];
   for (const role of PSTACK_ROLES) lines.push(`${role}: ${chosen[role] || 'inherit-parent'}`);
   for (const [role, model] of Object.entries(chosen)) if (!PSTACK_ROLES.includes(role)) lines.push(`${role}: ${model}`);
   return lines.join('\n') + '\n';

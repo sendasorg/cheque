@@ -45,7 +45,7 @@ function evidenceRelease(repo) {
   try {
     return api(`repos/${repo}/releases/tags/${RELEASE_TAG}`);
   } catch {
-    return api(`repos/${repo}/releases`, ['-X', 'POST', '-f', `tag_name=${RELEASE_TAG}`, '-f', 'name=Cheque verification evidence', '-F', 'prerelease=true', '-f', 'body=Videos, traces and results attached by Cheque verification runs. Each asset name starts with its run id; the PR result index links to them.']);
+    return api(`repos/${repo}/releases`, ['-X', 'POST', '-f', `tag_name=${RELEASE_TAG}`, '-f', 'name=cheque verification evidence', '-F', 'prerelease=true', '-f', 'body=Videos, traces and results attached by cheque verification runs. Each asset name starts with its run id; the PR result index links to them.']);
   }
 }
 
@@ -103,7 +103,7 @@ const ICON = { passed: 'passed', failed: 'FAILED', 'not-applicable': 'not applic
 export function renderIndex({ record, criteria = [], assets = [], environment, skipped = [] }) {
   const lines = [
     `<!-- cheque:evidence ${record.run_id} -->`,
-    `### Cheque verification · \`${record.status}\``,
+    `### cheque verification · \`${record.status}\``,
     '',
     `- **Revision:** \`${record.revision}\`${record.worktree_clean ? '' : ' (working tree had uncommitted changes; result is not bound to a commit)'}`,
     `- **Executor:** ${record.executor.mode} · ${record.executor.harness || 'harness not recorded'} · ${record.executor.os} · ${record.executor.browser} ${record.executor.browser_version || ''} · Playwright ${record.executor.playwright || 'n/a'}`,

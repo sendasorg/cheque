@@ -1,8 +1,8 @@
-// Target-repository setup. Cheque owns only what it records in
+// Target-repository setup. cheque owns only what it records in
 // `.cheque/managed.json`: whole files it created and marked blocks inside
 // shared files. Install and update never overwrite content they do not own;
 // uninstall never removes shared documents (constraints, glossary, ADRs,
-// verification skills) even if a Cheque workflow helped create them.
+// verification skills) even if a cheque workflow helped create them.
 import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync, readdirSync, rmdirSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
@@ -19,7 +19,7 @@ function template(name, vars = {}) {
   return readFileSync(join(TEMPLATES, name), 'utf8').replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? '');
 }
 
-// What Cheque manages in a target repository.
+// What cheque manages in a target repository.
 // `file`: created when absent; updated only while unmodified.
 // `seed`: created once, then owned by the repository (never updated or removed).
 // `block`: a marked section inside a shared file.
@@ -37,7 +37,7 @@ function plan({ cloudEntry, version, ref }) {
   return items;
 }
 
-// Every path Cheque can ever manage. The manifest lives in the repository,
+// Every path cheque can ever manage. The manifest lives in the repository,
 // so its entries are checked against this list before anything is touched.
 const MANAGEABLE = new Map(plan({ cloudEntry: true, version: '0', ref: null }).map((i) => [i.path, i.kind]));
 
@@ -63,7 +63,7 @@ function readManifest(repo) {
   if (!existsSync(p)) return { version: null, items: [] };
   const m = JSON.parse(readFileSync(p, 'utf8'));
   for (const item of m.items || []) {
-    if (MANAGEABLE.get(item.path) !== item.kind) throw new Error(`${MANIFEST} lists ${item.path} (${item.kind}), which Cheque never manages; refusing to act on it`);
+    if (MANAGEABLE.get(item.path) !== item.kind) throw new Error(`${MANIFEST} lists ${item.path} (${item.kind}), which cheque never manages; refusing to act on it`);
     assertNoSymlinks(repo, item.path);
   }
   return m;
@@ -145,7 +145,7 @@ export function install(repo, { cloudEntry = false, version = PACKAGE_VERSION, r
       report.updated.push(item.path);
       items.push({ path: item.path, kind: item.kind, sha256: sha(item.content) });
     } else {
-      report.conflicts.push(`${item.path}: exists with content Cheque did not write; left unchanged`);
+      report.conflicts.push(`${item.path}: exists with content cheque did not write; left unchanged`);
       if (prior) items.push(prior);
     }
   }

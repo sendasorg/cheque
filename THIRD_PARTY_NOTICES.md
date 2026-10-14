@@ -1,6 +1,6 @@
 # Third-party notices
 
-Cheque bundles the following components unmodified under
+`cheque` bundles the following components unmodified under
 `plugins/cheque/vendor/`. Each directory keeps its upstream license file.
 Exact revisions are pinned in `dependencies.json`.
 

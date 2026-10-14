@@ -53,7 +53,7 @@
         "skills/engineering/domain-modeling"
       ],
       "modifications": "none",
-      "notes": "grill-with-docs calls grilling and domain-modeling by name; Cheque wrappers resolve those names to the vendored copies."
+      "notes": "grill-with-docs calls grilling and domain-modeling by name; cheque wrappers resolve those names to the vendored copies."
     },
     {
       "name": "codex-plugin-cc",

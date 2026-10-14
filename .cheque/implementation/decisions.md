@@ -25,13 +25,13 @@ R-070.2, R-004.12.
 Registering vendored pstack/Addy/Matt skills as plugin skills would collide
 with standalone installs that use the same bare names (R-049.3, R-058.2).
 Vendored copies live under `plugins/cheque/vendor/` at pinned SHAs and
-are read by path through the Cheque entry point (path-aware adapter,
-R-053, R-054). Only Cheque-owned skills are registered.
+are read by path through the `cheque` entry point (path-aware adapter,
+R-053, R-054). Only `cheque`-owned skills are registered.
 
 ## D-004 Pstack model routing is overridden in session, not in global files
 
 Pstack reads only `~/.agents/pstack-models.md` (or Cursor's `.mdc`) and
-hardcodes Grok defaults. Cheque resolves a role map from its config into
+hardcodes Grok defaults. `cheque` resolves a role map from its config into
 ignored session state and instructs the session to use it in place of the
 global file. No global file is written (R-050). Default map: every role
 `inherit-parent`, so no Grok dependency (R-004.8).
@@ -57,7 +57,7 @@ R-065, R-066.
 
 Pstack keeps a single task's plan in its throughput-checkpoint todo list; only
 the multi-phase playbook writes a `plan.md`, and that playbook depends on
-monorepo paths that do not resolve outside cursor/plugins. Cheque writes
+monorepo paths that do not resolve outside cursor/plugins. `cheque` writes
 one plan document per delivery at `documents.planning_dir/<issue>.md`
 (default `.cheque/docs/plans/`) holding goals, non-goals, acceptance
 criteria, verification plan and unresolved decisions. Pstack's throughput

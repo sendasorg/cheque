@@ -1,6 +1,6 @@
 ---
 name: grill-with-docs
-description: Cheque packaging of Matt Pocock's grill-with-docs. A relentless interview to sharpen a plan or design, which also records glossary terms and ADRs as it goes.
+description: `cheque` packaging of Matt Pocock's grill-with-docs. A relentless interview to sharpen a plan or design, which also records glossary terms and ADRs as it goes.
 disable-model-invocation: true
 ---
 
@@ -21,5 +21,5 @@ documents.
 
 When the operator confirms shared understanding, write goals, non-goals,
 acceptance criteria and unresolved decisions into the delivery's plan
-document (`documents.planning_dir/<issue>.md`), the one plan the Cheque
+document (`documents.planning_dir/<issue>.md`), the one plan the `cheque`
 delivery uses.

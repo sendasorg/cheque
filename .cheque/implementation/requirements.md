@@ -1,6 +1,6 @@
-# Cheque implementation requirement ledger
+# `cheque` implementation requirement ledger
 
-Working ledger for implementing Cheque. It expands the handoff package's
+Working ledger for implementing `cheque`. It expands the handoff package's
 coverage register (142 source blocks) into child obligations. Source references
 are package-relative (`spec/<file>.md#r-NNN`) and resolve against the handoff
 package, which stays outside this repository.
@@ -47,14 +47,14 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-004.13 | Upstream files unchanged where possible; separate package with distinct skill names; adaptations as small inspectable patches | verified | run: npm run vendor:check (byte-identical); dependencies.json modifications: none |
 | R-004.14 | Reuse repo's existing toolchain, CI, deploy platform, instruction files, conventions | verified | file: lib/triggers.mjs reads repo; skill uses repo commands; run: pilot used npm test and existing CI |
 | R-004.15 | Pstack owns dev/PR shipping; CI/GitHub enforce merge; release extension owns deploy readiness/verification | verified | file: SKILL.md steps 6-8; release-readiness.md |
-| R-004.16 | Preserve required checks/reviews; any aggregator includes failures/cancellations/unexpected skips | not-applicable | why: Cheque adds no aggregator check; existing required checks untouched (no CI changes in target repos) |
+| R-004.16 | Preserve required checks/reviews; any aggregator includes failures/cancellations/unexpected skips | not-applicable | why: `cheque` adds no aggregator check; existing required checks untouched (no CI changes in target repos) |
 | R-004.17 | Initial implementation: reviewable change set; shared contract demonstrated through both harnesses on disposable pilot | verified | run: VR#1,#2,#4,#11 and PRE-5 on disposable pilot |
 | R-004.18 | Prove native execution, cloud loading, scheduling/trigger and checkpoint continuation before promising unattended support | verified | docs/capability-matrix.md marks unattended support only where demonstrated |
 | R-004.19 | Remote actions (PRs, protections, merge, deploy, access) follow session authorization | verified | why: remote actions limited to pilot repo/issues; cheque main protection bypass disclosed (decisions D-009) |
 | R-004.20 | Exclude full BMAD, Sharpen gate orchestration, another TDD/review router, always-on Ponytail mode | verified | file: dependencies.json (no BMAD/Sharpen/Ponytail installed) |
 | R-004.21 | State/rules in git/GitHub, never tied to hostname, home directory or local credential export | verified | test: evidence.test refuses local paths; checkpoint holds no hostnames |
 | R-004.22 | Planning a delivery path is distinct from executing a production release | verified | file: contract deployment field + authorizeAction deploy needs environment approval; release-readiness.md |
-| R-005.1 | Ordinary-language outcome request applies configured policy | verified | run: PRE-5 "Use Cheque to deliver PRE-5. Ship when verified." |
+| R-005.1 | Ordinary-language outcome request applies configured policy | verified | run: PRE-5 "Use `cheque` to deliver PRE-5. Ship when verified." |
 | R-005.2 | Intent to ship does not fabricate a missing grant; request only missing authority | verified | run: PRE-5 runs 1-4 waited for approval despite "ship" intent |
 | R-005.3 | No repeated routing/stages/verification/recovery questions after approval | verified | run: PRE-5 run 5 asked no routing/stage questions |
 | R-006.1 | One documented natural-language invocation pattern | verified | file: README "Your first delivery" |
@@ -66,7 +66,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-007.1 | Thin CLI adapters: invocation, scoped review input, result capture, explicit failure handling | verified | file: lib/adapters.mjs (invocation, prompt, parse, failure classes) |
 | R-007.2 | Implement concrete Claude Code/Codex differences first; no speculative abstraction or generic platform | verified | file: two built-in adapters + command adapter only |
 | R-008.1 | Pstack owns playbooks and repair/review/shipping loop | verified | file: references/pstack.md |
-| R-008.2 | Cheque adds config, specialist pointers, integration helpers only | verified | file: plugin contents (skills, references, helper) |
+| R-008.2 | `cheque` adds config, specialist pointers, integration helpers only | verified | file: plugin contents (skills, references, helper) |
 | R-008.3 | No duplicated lifecycle, second review hierarchy, or every-specialist-every-task | verified | test: specialists.test (only applicable specialists) |
 | R-008.4 | Standards/checks applied per approved verification plan and actual triggers | verified | file: SKILL.md step 3 plan triggers |
 | R-009.1 | Evidence-backed implementer/reviewer exchanges (reproduce, context, challenge, fix, re-review) | verified | file: SKILL.md step 5 (validate, fix, re-review) |
@@ -74,7 +74,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-009.3 | No unanimity requirement, debate for its own sake or indefinite loops; bounded recovery preserved | verified | file: recovery.md bounded cycles |
 | R-009.4 | Reviewer findings do not change authority or weaken checks | verified | file: lib/review.mjs (findings only); approval.md |
 | R-010.1 | Shared repo standards separated from personal harness/model/reasoning preferences | verified | file: operator.yaml vs .cheque/config.yaml layers; test: config precedence |
-| R-010.2 | Explicit per-repo/operator overrides preserved without teammates adopting Cheque | verified | test: coexistence two developers |
+| R-010.2 | Explicit per-repo/operator overrides preserved without teammates adopting `cheque` | verified | test: coexistence two developers |
 | R-010.3 | Harness identity not equated with model/provider; record actual participants where observable | verified | file: review records reviewer.model; run: VR#1 gpt-6-astra, VR#2 claude-opus-5-5 |
 | R-011.1 | Small set of representative real tasks assessing harness defaults and review usefulness | unverified | why: only pilot fixture tasks (seeded defect, PRE-5); no representative real-repository tasks evaluated yet |
 | R-011.2 | Record outcomes, defects caught, noisy findings, elapsed time, observable usage | unverified | why: partial data only (review durations ~40s Codex, findings caught on seeded defect); no usage accounting |
@@ -182,12 +182,12 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-044.5 | Safe uninstall | verified | test: uninstall tests |
 | R-044.6 | Track managed files/sections; preserve unrelated content; report conflicts | verified | test: conflicts reported, unrelated content preserved |
 | R-044.7 | Updates retain delivery state/approvals or checkpoint incompatible runs | verified | file: checkpoint lives in Linear; schema version refusal in checkpoint.parse |
-| R-045.1 | `.cheque/` at repo root for Cheque settings/operating docs | verified | file: templates; lib/install.mjs |
+| R-045.1 | `.cheque/` at repo root for `cheque` settings/operating docs | verified | file: templates; lib/install.mjs |
 | R-045.2 | Shared docs/skills stay conventional; `.cheque/README.md` references them | verified | file: templates/cheque-readme.md |
 | R-046.1 | `.cheque/config.yaml` versioned, one Linear binding + optional project, credential refs only | verified | file: templates/config.yaml |
 | R-046.2 | `.cheque/config.local.yaml` ignored private overrides | verified | file: gitignore block; test: tracked config.local rejected |
 | R-046.3 | `.cheque/README.md` operating context and links | verified | file: templates/cheque-readme.md |
-| R-046.4 | `.cheque/docs/` Cheque-only notes | verified | file: documents.planning_dir default .cheque/docs/plans |
+| R-046.4 | `.cheque/docs/` `cheque`-only notes | verified | file: documents.planning_dir default .cheque/docs/plans |
 | R-046.5 | `.cheque/verification/` supplemental helpers | verified | file: verification.md (.cheque/verification for helpers) |
 | R-046.6 | `.cheque/state/` ignored, restored from authoritative record | verified | file: gitignore block; checkpoint restore from Linear |
 | R-046.7 | `.cheque/artifacts/` ignored, published before teardown | verified | file: gitignore block; evidence publish before teardown |
@@ -197,26 +197,26 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-048.1 | Native locations for manifests, skills, AGENTS.md/CLAUDE.md, tests, CI, package config | verified | file: manifests and skills in native locations |
 | R-048.2 | New shared docs at CONSTRAINTS.md, GLOSSARY.md, docs/adr/; repo conventions win | verified | file: defaults.yaml documents.* |
 | R-048.3 | No pointer-only replacement of shared docs; symlinks not sole mechanism | verified | file: no pointer replacement; symlinks unused |
-| R-049.1 | Settings affect Cheque-invoked work only | verified | test: coexistence (no global writes) |
+| R-049.1 | Settings affect `cheque`-invoked work only | verified | test: coexistence (no global writes) |
 | R-049.2 | Upstream skills keep names, discovery paths, user config, behavior | verified | test: coexistence standalone skills unchanged |
 | R-049.3 | No shadowing, global skill changes, rewriting others' config or global routing | verified | test: coexistence + package.test |
-| R-049.4 | Root instruction addition (if any) small, identified, scoped, non-mandatory | not-applicable | why: Cheque adds no root instruction section |
+| R-049.4 | Root instruction addition (if any) small, identified, scoped, non-mandatory | not-applicable | why: `cheque` adds no root instruction section |
 | R-050.1 | Read Pstack model settings and apply session config at entry point without rewriting global files | verified | file: lib/models.mjs, references/pstack.md; test: model map in ignored state |
-| R-050.2 | Standalone invocation does not inherit Cheque policy | verified | test: global pstack-models.md never written |
+| R-050.2 | Standalone invocation does not inherit `cheque` policy | verified | test: global pstack-models.md never written |
 | R-050.3 | Inspect actual consumption; report incompatibility if scoped overrides impossible | unverified | why: override is instruction-level; Pstack has no scoped path. Not observed which model a Pstack subagent used in the pilot |
 | R-051.1 | Generated verification skill in harness skill dir with feature map intact | verified | run: .claude/skills/verify-price-calculator with feature map (pilot PR #4) |
 | R-051.2 | `.cheque/verification/` does not displace it | verified | file: verification.md |
 | R-051.3 | One canonical source for shared documents | verified | file: documents.* point at canonical files |
-| R-051.4 | Adapters only in namespaced Cheque assets; pinned and recorded | verified | file: adaptations only in skills/ references (namespaced); dependencies.json modifications none |
+| R-051.4 | Adapters only in namespaced `cheque` assets; pinned and recorded | verified | file: adaptations only in skills/ references (namespaced); dependencies.json modifications none |
 | R-052.1 | Install/update/uninstall track owned files/sections; preserve others | verified | test: install tests |
 | R-052.2 | Uninstall never deletes shared constraints/glossary/ADRs/verification | verified | test: uninstall keeps shared documents |
 | R-052.3 | Legacy relocated docs marked for reviewable migration | not-applicable | why: no legacy relocated documents exist in pilot or rollout targets |
-| R-052.4 | Runtime hooks no-op outside Cheque work, tested; footprint reported | verified | run: claude plugin details: Hooks (0); always-on ~226 tokens |
+| R-052.4 | Runtime hooks no-op outside `cheque` work, tested; footprint reported | verified | run: claude plugin details: Hooks (0); always-on ~226 tokens |
 | R-053.1 | Works without teammates installing it or adopting settings | verified | test: coexistence two developers |
 | R-053.2 | Works without separately installed upstream plugins (bundled/pinned closure) | verified | file: vendored closure; run: fresh Codex home load |
 | R-053.3 | Package-owned adaptations isolated from independent upstream installs | verified | file: vendored copies never registered |
 | R-054.1 | Config resolves shared doc paths; defaults to standard locations | verified | file: defaults.yaml documents |
-| R-054.2 | Configured path changes Cheque lookup only | verified | file: configuration.md |
+| R-054.2 | Configured path changes `cheque` lookup only | verified | file: configuration.md |
 | R-054.3 | Never two editable copies or sync service | verified | file: no sync code |
 | R-055.1 | Symlinks optional/explicit; relative in-repo; never overwrite conventional files | not-applicable | why: symlinks not selected |
 | R-055.2 | Link-free path supported; no silent copy fallback | verified | file: link-free layout is the only one |
@@ -224,7 +224,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-056.2 | Uninstall leaves no broken managed links | verified | test: uninstall removes cloud entry dirs |
 | R-056.3 | README distinguishes packaging, configurable paths, shared standards, symlink limits | verified | file: README Coexistence |
 | R-057.1 | Coexistence mode 1: enabled/invoked | verified | run: PRE-5 |
-| R-057.2 | Coexistence mode 2: installed not invoked | verified | run: pilot-b had the plugin installed while a non-Cheque session generated the verification skill (validation report); no hooks, namespaced skills |
+| R-057.2 | Coexistence mode 2: installed not invoked | verified | run: pilot-b had the plugin installed while a non-`cheque` session generated the verification skill (validation report); no hooks, namespaced skills |
 | R-057.3 | Coexistence mode 3: disabled/uninstalled | verified | test: uninstall leaves standalone/shared files |
 | R-057.4 | Coexistence mode 4: standalone upstream only, same authoritative files | verified | test: standalone files unchanged by install/uninstall (byte level); behavior of standalone skills see R-057.6 |
 | R-057.5 | Two developers with different user settings/credentials unaffected | verified | test: two developers |
@@ -232,7 +232,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-058.1 | Discovery/entry checks repeated in local/cloud for both harnesses | unverified | why: Claude local and cloud, Codex local demonstrated; Codex cloud blocked (no cloud environment) |
 | R-058.2 | No duplicate skill names, doc drift, account leakage, overwritten instructions, cleanup of shared assets | verified | test: coexistence + package tests |
 | R-058.3 | Second repo settings cannot affect first | verified | test: second repository settings do not leak |
-| R-058.4 | Missing config blocks only Cheque operations | verified | test: missing config blocks only Cheque |
+| R-058.4 | Missing config blocks only `cheque` operations | verified | test: missing config blocks only `cheque` |
 | R-058.5 | Compatibility evidence/limits in README | verified | file: README Coexistence, validation report |
 
 ## spec/04-harnesses-and-native-automation.md
@@ -346,7 +346,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-088.3 | Prove integration can establish actor and revision, else report gap | unverified | why: actor/revision proven for app writes and owner UI comments; connector (MCP) attribution not demonstrated |
 | R-089.1 | Acceptance: approve once in Linear | verified | run: PRE-5 approved in Linear; caveat: a second approval was requested because the pilot history contained a probe written with an owner write key |
 | R-089.2 | Acceptance: both harnesses honor same grant | verified | run: VR#11 |
-| R-089.3 | Acceptance: agent-authored approval cannot self-authorize | unverified | why: Cheque-app approvals proven rejected (VR#9); approvals written through a harness Linear connector signed in as an owner not tested |
+| R-089.3 | Acceptance: agent-authored approval cannot self-authorize | unverified | why: `cheque`-app approvals proven rejected (VR#9); approvals written through a harness Linear connector signed in as an owner not tested |
 | R-089.4 | Acceptance: changed scope requires extension | verified | test: stale revision; extension |
 | R-089.5 | Acceptance: revoked/stale approvals cannot start delivery | verified | test: revoked/stale cannot authorize |
 | R-090.1 | Operator-run branches trusted; no extra branch/fork gate | verified | file: no branch trust gate |

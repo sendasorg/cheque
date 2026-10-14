@@ -1,6 +1,6 @@
 # Configuration reference
 
-Cheque reads YAML from up to four files plus approved task exceptions.
+`cheque` reads YAML from up to four files plus approved task exceptions.
 Later layers override earlier ones key by key.
 
 | Order | Layer | Location | Committed | May set authority |
@@ -16,9 +16,9 @@ contributed. Credential settings are names of environment variables; explain
 shows whether each is set, never its value.
 
 Every setting below is validated. An unknown key, a wrong type, an
-unregistered harness or authority in a committed file stops Cheque with a
+unregistered harness or authority in a committed file stops `cheque` with a
 message naming the file and key. Missing settings that only delivery needs
-(Linear binding, owners, repositories) block Cheque delivery commands and
+(Linear binding, owners, repositories) block `cheque` delivery commands and
 nothing else.
 
 The parser accepts a strict YAML subset: block maps, block lists, plain or
@@ -110,11 +110,11 @@ In a cloud environment, provide the operator layer as the variable
 - The reviewer is chosen against the harness that actually implemented the change (recorded in the checkpoint), not the default.
 - `different-harness` picks the first entry of `preferences` that is enabled, available in this environment and different from the implementer. If none is available the review is blocked and checkpointed; it is never silently done by the implementer.
 - `reviewer` set explicitly always wins. Setting it to the implementer requires `policy: same-harness`.
-- Exhaustion of a subscription blocks and waits unless `fallback.enabled` covers that step. Cheque never uses API-key billing: reviewer processes run with API keys removed.
+- Exhaustion of a subscription blocks and waits unless `fallback.enabled` covers that step. `cheque` never uses API-key billing: reviewer processes run with API keys removed.
 
 ## Pstack models
 
-Pstack reads model routing only from user-global files. Cheque writes its
+Pstack reads model routing only from user-global files. `cheque` writes its
 own map from `pstack.models` to `.cheque/state/pstack-models.md` for the
 session (`cheque models`) and leaves the global files alone. Roles without
 an entry run on the session's own model.

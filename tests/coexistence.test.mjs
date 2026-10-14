@@ -49,7 +49,7 @@ test('standalone upstream skills, shared documents and team instructions survive
   assert.deepEqual(read(), original, 'uninstalled');
 });
 
-test('the cloud entry uses a Cheque-only name and never replaces an upstream skill', () => {
+test('the cloud entry uses a cheque-only name and never replaces an upstream skill', () => {
   const repo = tempRepo(STANDALONE);
   run(repo, isolatedEnv(), 'install', '--cloud-entry');
   const names = execFileSync('git', ['ls-files', '--others', '--exclude-standard'], { cwd: repo, encoding: 'utf8' }).split('\n').filter((p) => p.endsWith('SKILL.md'));
@@ -72,7 +72,7 @@ test('two developers with different private settings resolve different authority
   assert.deepEqual(snapshot(bob.HOME), bobBefore, 'Alice installing does not touch Bob');
 });
 
-test('missing Cheque configuration blocks only Cheque commands', () => {
+test('missing cheque configuration blocks only cheque commands', () => {
   const repo = tempRepo(STANDALONE);
   const r = run(repo, isolatedEnv(), 'doctor', '--json');
   assert.equal(r.status, 3);

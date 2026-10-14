@@ -15,7 +15,7 @@ For each acceptance criterion record, in `plan.json` (a list):
 If the repository has no `verify-*` skill, generate one with Pstack's
 `create-verification-skill` (vendored) before writing any generic testing
 guidance, in the harness's project skill directory, and run it end to end
-once. Keep it maintained with `maintain-verification-skill`. Cheque-only
+once. Keep it maintained with `maintain-verification-skill`. `cheque`-only
 helpers go in `.cheque/verification/` and never replace that skill.
 
 ## Browser runs
