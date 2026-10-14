@@ -58,7 +58,7 @@ Addy's plugin is a full install or nothing. Its skills link to shared reference 
    - Variable `STROPPERS_APP_SLUG`. The respond workflow uses it to ignore the App's own reviews, and the action uses it to accept CI failures on commits the App pushed.
    - Secret `CLAUDE_CODE_OAUTH_TOKEN`, or switch the input to `anthropic_api_key` with a secret of that name
 
-5. **Protect the default branch.** Require one approval and your CI check. If the repo uses Sharpen's `/sdlc:init`, that check is `ci-pass`. Turn on "Allow auto-merge" if you want approved agent PRs to merge themselves, then set `auto_merge: "true"` in `stroppers-implement.yml`.
+5. **Protect the default branch.** Require one approval and your CI check, and don't add the App to the bypass list. That leaves the App able to push only to unprotected branches, which is where it works. If the repo uses Sharpen's `/sdlc:init`, that check is `ci-pass`. Turn on "Allow auto-merge" if you want approved agent PRs to merge themselves, then set `auto_merge: "true"` in `stroppers-implement.yml`.
 
 6. **Set the smoke paths** in `stroppers-verify-deploy.yml` and check the environment name. Vercel reports production as `Production`.
 
@@ -75,7 +75,8 @@ Every plugin in `.claude-plugin/marketplace.json` is locked to a commit, and the
 ## Limits worth knowing
 
 - **Sharpen's gate records that a review skill ran, not that the agent followed it.** Its own docs say so. Your required CI check and the human approval are the real gates. Treat the local gate as a fast filter.
-- **Issue text is prompt input.** Only people with triage access can apply labels, and that's what stands between a stranger and an agent run. The agent has broad Bash access on the runner, because it has to run your tests. Its GitHub token can't touch workflows, but the Claude credential is available inside the run. Don't use this on repos where untrusted people can label issues.
+- **What the agent reads is filtered before it runs.** Labeling an issue `ready-for-agent` vouches for its body, and only people with triage access can label. Comments, reviews, and line comments reach the agent only when their author is an owner, member, or collaborator. The guard writes them to a file outside the repo, and the prompts tell the agent to work from that file and not to fetch more. Reviews from anyone else don't start a run.
+- **The agent can still do a lot on the runner.** By default it can run any shell command, because it has to run your tests, and it holds a token that can push branches and comment. Branch protection keeps that token off your default branch, and the missing Workflows permission keeps it out of CI configuration. Once you know what your suite needs, narrow `allowed_tools` to specific commands. Moving the push and PR creation out of the agent's hands would shrink this further, but Sharpen's local gate check runs inside the agent's session, so you'd give that check up. Your required CI check and approval would still be the gate.
 - **Each round costs a model run.** A review that only says "looks good" still uses a round. Approvals don't trigger anything.
 - **The smoke check sees what an anonymous client sees.** If a CDN's bot protection or Vercel's deployment protection sits in front of the URL, the check fails for reasons unrelated to your code. Allow the runner through, or point the check at paths that aren't challenged.
 - **Two plugins disagree on the shortcut marker.** Ponytail writes `shortcut:` and Sharpen reads `ponytail:`. The `CLAUDE.md` block settles it on `ponytail:`, which ponytail's docs support. List the debt with `/ponytail:ponytail-debt ponytail`.

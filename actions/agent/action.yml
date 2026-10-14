@@ -40,6 +40,14 @@ inputs:
     description: Enable GitHub auto-merge (squash) on PRs this action opens. Branch protection still decides when it merges.
     required: false
     default: "false"
+  allowed_tools:
+    description: >
+      Tools the agent may use. Bare Bash lets it run any command, which it
+      needs to run an arbitrary test suite. Narrow it per repo with entries
+      like Bash(bin/rails test:*),Bash(git:*),Bash(gh pr:*) once you know
+      what the suite needs.
+    required: false
+    default: Bash,Read,Edit,Write,Glob,Grep,Skill,Task,TodoWrite
   allowed_bots:
     description: >
       Comma-separated GitHub App slugs allowed to trigger a run. Include your
@@ -104,7 +112,7 @@ runs:
           grumpy@stroppers
           ${{ inputs.extra_plugins }}
         claude_args: |
-          --allowedTools Bash,Read,Edit,Write,Glob,Grep,Skill,Task,TodoWrite
+          --allowedTools ${{ inputs.allowed_tools }}
           ${{ inputs.model != '' && format('--model {0}', inputs.model) || '' }}
         prompt: |
           ${{ steps.guard.outputs.prompt }}

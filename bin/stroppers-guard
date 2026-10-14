@@ -1,22 +1,37 @@
 #!/usr/bin/env bash
-# Decides whether an agent run should happen, prepares the branch, and prints
-# GITHUB_OUTPUT lines: skip, branch, prompt. Diagnostics go to stderr.
+# Decides whether an agent run should happen, prepares the branch, snapshots
+# the trusted discussion, and prints GITHUB_OUTPUT lines: skip, branch,
+# context, prompt. Diagnostics go to stderr.
 # usage: stroppers-guard implement|respond <number> <max_rounds> <run_url>
 set -euo pipefail
 
 mode=$1 number=$2 max_rounds=$3 run_url=$4
 root=$(cd "$(dirname "$0")/.." && pwd)
 repo=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+context="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/stroppers-context-$number.md"
+round=""
+
+# Only these authors' words reach the agent. Labeling an issue ready-for-agent
+# vouches for its body; comments and reviews have to earn it by association.
+trusted='select(.author_association == "OWNER" or .author_association == "MEMBER" or .author_association == "COLLABORATOR")'
 
 skip() { echo "stroppers: skipping: $*" >&2; echo "skip=true"; exit 0; }
 has_label() { jq -e --arg l "$2" 'any(.labels[]; .name == $l)' <<<"$1" >/dev/null; }
+api() { gh api --paginate "repos/$repo/$1" | jq -s 'add // []'; }
 
 render() {
-  local file=$1 delim
+  local delim
   delim="STROPPERS_$(date +%s%N)_$RANDOM"
   echo "prompt<<$delim"
-  sed -e "s|{{NUMBER}}|$number|g" -e "s|{{REPO}}|$repo|g" -e "s|{{BRANCH}}|$branch|g" \
-      -e "s|{{ROUND}}|${round:-}|g" -e "s|{{MAX_ROUNDS}}|$max_rounds|g" "$root/prompts/$file"
+  # Literal replacement: none of these values is ever read as a pattern or command.
+  NUMBER=$number REPO=$repo BRANCH=$branch ROUND=$round MAX_ROUNDS=$max_rounds CONTEXT=$context \
+    python3 -c '
+import os, sys
+text = open(sys.argv[1]).read()
+for key in ("NUMBER", "REPO", "BRANCH", "ROUND", "MAX_ROUNDS", "CONTEXT"):
+    text = text.replace("{{" + key + "}}", os.environ[key])
+sys.stdout.write(text)
+' "$root/prompts/$1"
   echo "$delim"
 }
 
@@ -32,10 +47,16 @@ case $mode in
       skip "$branch already exists; its PR belongs to the respond loop"
     fi
 
+    {
+      gh api "repos/$repo/issues/$number" | jq -r '"# \(.title)\n\n\(.body // "")"'
+      api "issues/$number/comments" | jq -r ".[] | $trusted | \"\n## Comment from @\(.user.login)\n\n\(.body)\""
+    } > "$context"
+
     gh issue edit "$number" --remove-label ready-for-agent --add-label agent-working >/dev/null
     git checkout -b "$branch" >&2
     echo "skip=false"
     echo "branch=$branch"
+    echo "context=$context"
     render implement.md
     ;;
 
@@ -43,8 +64,9 @@ case $mode in
     pr=$(gh pr view "$number" --json state,labels,headRefName,isCrossRepository)
     [ "$(jq -r .state <<<"$pr")" = OPEN ] || skip "PR #$number is not open"
     [ "$(jq -r .isCrossRepository <<<"$pr")" = false ] || skip "PR #$number comes from a fork"
-    # The agent label can lag the PR by a few seconds, so the branch prefix counts too.
     branch=$(jq -r .headRefName <<<"$pr")
+    [[ $branch =~ ^[A-Za-z0-9._/-]+$ ]] || skip "PR #$number has a branch name outside [A-Za-z0-9._/-]"
+    # The agent label can lag the PR by a few seconds, so the branch prefix counts too.
     has_label "$pr" agent || [[ $branch == agent/* ]] || skip "PR #$number is not an agent PR"
     has_label "$pr" needs-human && skip "PR #$number is labeled needs-human"
 
@@ -56,6 +78,17 @@ case $mode in
       skip "PR #$number used all $max_rounds rounds"
     fi
     round=$((done_rounds + 1))
+
+    {
+      echo "# Review feedback on PR #$number from trusted authors"
+      api "pulls/$number/reviews" |
+        jq -r ".[] | $trusted | select((.body // \"\") != \"\") | \"\n## Review (\(.state)) from @\(.user.login)\n\n\(.body)\""
+      api "pulls/$number/comments" |
+        jq -r ".[] | $trusted | \"\n## Line comment \(.id) from @\(.user.login) on \(.path):\(.line // .original_line)\n\n\(.body)\""
+      api "issues/$number/comments" |
+        jq -r ".[] | $trusted | \"\n## Comment from @\(.user.login)\n\n\(.body)\""
+    } > "$context"
+
     gh label create "agent-round-$round" --color ededed --description "Agent respond rounds used on this PR" --force >/dev/null
     edit=(--add-label "agent-round-$round")
     [ "$done_rounds" -gt 0 ] && edit+=(--remove-label "agent-round-$done_rounds")
@@ -64,6 +97,7 @@ case $mode in
     gh pr checkout "$number" >&2
     echo "skip=false"
     echo "branch=$branch"
+    echo "context=$context"
     render respond.md
     ;;
 

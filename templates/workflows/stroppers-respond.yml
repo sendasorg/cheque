@@ -20,13 +20,14 @@ permissions:
 
 jobs:
   respond:
-    # Skip events caused by the agent itself, approvals, green CI, and anything
-    # not on an agent branch from this repository.
+    # Run only for reviews from people with a stake in the repo, and for red CI
+    # on agent branches from this repository. Skip the agent's own activity and approvals.
     if: >-
       github.event.sender.login != format('{0}[bot]', vars.STROPPERS_APP_SLUG) &&
       github.event.sender.login != 'claude[bot]' &&
       (
         (github.event_name == 'pull_request_review' && github.event.review.state != 'approved' &&
+          contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association) &&
           startsWith(github.event.pull_request.head.ref, 'agent/')) ||
         (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure' &&
           github.event.workflow_run.head_repository.full_name == github.repository &&
