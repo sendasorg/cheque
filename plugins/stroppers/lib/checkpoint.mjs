@@ -29,7 +29,9 @@ const CONTRACT_KEYS = ['issue', 'outcome', 'acceptance_criteria', 'scope', 'repo
 export function validateContract(c) {
   const errors = [];
   for (const k of CONTRACT_KEYS) if (!(k in (c || {}))) errors.push(`contract.${k} is missing`);
+  if (c && (typeof c.outcome !== 'string' || !c.outcome.trim())) errors.push('contract.outcome must state the intended result');
   if (c && !Array.isArray(c.acceptance_criteria)) errors.push('contract.acceptance_criteria must be a list');
+  else if (c && !c.acceptance_criteria.length) errors.push('contract.acceptance_criteria needs at least one criterion; an approvable contract cannot be empty');
   else c?.acceptance_criteria?.forEach((a, i) => {
     if (!a.id || !a.criterion) errors.push(`contract.acceptance_criteria[${i}] needs id and criterion`);
   });

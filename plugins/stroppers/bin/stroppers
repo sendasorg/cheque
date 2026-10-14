@@ -156,7 +156,7 @@ const commands = {
         report.linear = { workspace: binding.workspace_key, ok: true };
         const risk = await credentialRisk(effective, process.env, binding, (effective.authority?.owners || []).map((o) => o.linear_user_id));
         if (risk) report.blockers.push(`linear: ${risk}`);
-        else report.linear.verification_key = binding_owner(effective, binding) ? 'owner key, read-only (scope probe: write refused)' : 'not an approval owner';
+        else report.linear.verification_key = binding_owner(effective, binding) ? 'safe: read-only (Linear refused a write probe), so approvals by its owner cannot be forged through it' : 'not an approval owner';
         const agent = await checkAgent(effective, process.env, stateDir(), (effective.authority?.owners || []).map((o) => o.linear_user_id));
         report.linear.agent = { ok: true, app_user: agent.agent_id };
       } catch (e) {
@@ -296,7 +296,7 @@ const commands = {
     const binding = await checkBinding(effective, process.env);
     const risk = await credentialRisk(effective, process.env, binding, owners);
     if (risk) fail(`approval cannot be verified: ${risk}`);
-    const keyState = binding_owner(effective, binding) ? 'owner key, read-only (scope probe: write refused)' : 'not an approval owner';
+    const keyState = binding_owner(effective, binding) ? 'safe: read-only (Linear refused a write probe), so approvals by its owner cannot be forged through it' : 'not an approval owner';
     const result = verifyApproval({ issue, comments, owners, expectedRevision: c.contract.revision, workspace: issue.workspace_id });
     c.task.issue_id = issue.id;
     c.task.workspace_id = issue.workspace_id;

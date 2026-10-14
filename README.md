@@ -146,6 +146,14 @@ wrong workspace, a writable owner key, a harness that is not signed in.
 
    That approves this revision only. `stroppers revoke` withdraws it. If the agent later needs more scope, it posts a new revision and waits for `stroppers extend sha256:<revision>`. It continues unrelated in-scope work meanwhile.
 4. **Let it run.** The agent plans with Pstack, runs the triggered specialist checks and the quality floor, implements, gets a review from the other harness, fixes accepted findings, and opens the PR. Your repository's required checks and required human reviews still apply. Approval does not bypass them.
+
+   Your harness's own permission policy applies too. Claude Code's auto mode refuses to merge without a human review even when Linear approval covers it. If you want Stroppers to land approved work itself, allow the command deliberately, for example in `.claude/settings.local.json`:
+
+   ```json
+   { "permissions": { "allow": ["Bash(gh pr merge:*)"] } }
+   ```
+
+   Otherwise the agent stops at "ready to merge" and you merge.
 5. **Inspect the PR.** Browser changes get a "Stroppers verification" comment with the tested revision, executor, per-criterion outcomes and links to the recorded videos. Backend and docs changes get the checks that fit them instead.
 6. **Delivery.** After merge, and deployment where the contract includes one, the agent runs the live acceptance checks and posts the results to Linear. It closes the issue only when every criterion has passed. Anything still unverified, or waiting on an observation window or your judgment, stays open and listed.
 
@@ -264,6 +272,7 @@ tested.
 | Review `unavailable` or `auth-failed` | Install and sign in to the reviewer CLI where the review runs (`claude auth status`, `codex login status`) |
 | Browser `unverified (environment)` | Run `stroppers browser prepare`; in cloud, allow the Playwright download hosts |
 | Plugin changes not picked up | Harnesses cache by version: update the marketplace and the plugin, or reinstall |
+| Agent stops at "ready to merge" with a permission denial | The harness blocked the merge. Merge yourself, or allow `Bash(gh pr merge:*)` for the repository |
 | `HTTP 403: GitHub GraphQL is not available` in cloud | Expected; Stroppers uses REST. Avoid `gh pr comment` in custom steps |
 
 ## Contributing

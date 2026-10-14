@@ -28,6 +28,8 @@ test('contract hash is stable across key order', () => {
   assert.equal(contractHash(reordered), REV);
   assert.deepEqual(validateContract(contract), []);
   assert.ok(validateContract({ ...contract, extra: 1 }).includes('contract.extra is not a contract field'));
+  assert.ok(validateContract({ ...contract, acceptance_criteria: [] }).some((e) => e.includes('at least one criterion')));
+  assert.ok(validateContract({ ...contract, outcome: ' ' }).some((e) => e.includes('outcome')));
 });
 
 test('an owner comment naming the current revision approves', () => {
