@@ -62,7 +62,9 @@ were fixed before the next run:
 3. Refused: the stopped session still held a two-hour lease. Fixed: stopping releases the lease.
 4. Stopped: the verifier reported the first owner approval, which predated the key revocation, instead of the fresh one. Fixed: latest valid approval.
 5. Ran the full flow: approval verified; one-line change; unit tests and Playwright journey passed with video on the PR; floor guard clean; GitHub CI green; Codex review clean; an independent verifier posted PASS+NOTES on the PR. Stopped at merge because Claude Code's auto-mode policy refuses merges without human review.
-6. RESULT_PENDING
+6. Continued with `gh pr merge` explicitly allowed for the session (the operator's harness permission, matching the Linear grant): authorized and journaled the merge, squash-merged PR #3 pinned to the verified head (`--match-head-commit`), moved the checkpoint head to the merge commit (which voided earlier pre-merge outcomes), re-ran both criteria against the merge commit (unit tests, isolated server check, Playwright with video), computed `ok: true`, posted the Linear evidence comment, released the lease, and moved PRE-5 to Done.
+
+Also exercised: an unattended session on a deliberately vague issue (PRE-6) stopped at the contract stage, made no changes, started no interview and named what would unblock it. That run found that an empty contract could still be posted with an approval line; contracts now need an outcome and at least one criterion.
 
 ## Remaining limitations
 

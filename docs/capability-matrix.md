@@ -57,7 +57,7 @@ reported as blocked, not built.
 
 | Capability | Result |
 | --- | --- |
-| Per-repository workspace binding | demonstrated: a key for another workspace is rejected ("credential authenticates to workspace pressed-key, but this repository is bound to sendasorg") |
+| Per-repository workspace binding | demonstrated: a key for another workspace is rejected ("credential authenticates to workspace other-workspace, but this repository is bound to my-workspace", names changed) |
 | Owner approval read with a read-only key | demonstrated: owner comment approving the contract revision verified as `approved`, actor matched by user id |
 | Agent cannot self-authorize | demonstrated: an approval line posted by the Stroppers agent app was rejected ("not a configured approval owner"); a comment written with an owner's personal write key is indistinguishable from the owner's (same user id, no `botActor`), which is why agents never hold one |
 | Both harnesses honor the same grant | demonstrated: Claude Code and Codex sessions both returned `authorized: merge` from the same Linear record |
