@@ -3,10 +3,10 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-export const PLUGIN = new URL('../plugins/stroppers/', import.meta.url).pathname;
-export const CLI = join(PLUGIN, 'bin', 'stroppers');
+export const PLUGIN = new URL('../plugins/cheque/', import.meta.url).pathname;
+export const CLI = join(PLUGIN, 'bin', 'cheque');
 
-export function tempDir(prefix = 'stroppers-test-') {
+export function tempDir(prefix = 'cheque-test-') {
   return mkdtempSync(join(tmpdir(), prefix));
 }
 
@@ -26,7 +26,7 @@ export function git(cwd, ...args) {
 }
 
 export function tempRepo(files = {}) {
-  const root = tempDir('stroppers-repo-');
+  const root = tempDir('cheque-repo-');
   git(root, 'init', '-q', '-b', 'main');
   for (const [rel, content] of Object.entries(files)) write(root, rel, content);
   git(root, 'add', '-A');
@@ -36,6 +36,6 @@ export function tempRepo(files = {}) {
 
 // Environment with no operator config and no harness credentials leaking in.
 export function isolatedEnv(extra = {}) {
-  const home = tempDir('stroppers-home-');
+  const home = tempDir('cheque-home-');
   return { PATH: process.env.PATH, HOME: home, XDG_CONFIG_HOME: join(home, '.config'), ...extra };
 }

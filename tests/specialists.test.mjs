@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { triggersFor } from '../plugins/stroppers/lib/triggers.mjs';
-import { runFloorGuard, extractGuard } from '../plugins/stroppers/lib/floor.mjs';
+import { triggersFor } from '../plugins/cheque/lib/triggers.mjs';
+import { runFloorGuard, extractGuard } from '../plugins/cheque/lib/floor.mjs';
 import { git, tempRepo, write } from './helpers.mjs';
 
 function change(files, deletions = []) {

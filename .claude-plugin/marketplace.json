@@ -1,11 +1,11 @@
 {
-  "name": "stroppers",
+  "name": "cheque",
   "owner": { "name": "sogamoso" },
-  "description": "Stroppers: approved-issue delivery through Pstack for Claude Code and Codex.",
+  "description": "cheque: approved-issue delivery through Pstack for Claude Code and Codex.",
   "plugins": [
     {
-      "name": "stroppers",
-      "source": "./plugins/stroppers",
+      "name": "cheque",
+      "source": "./plugins/cheque",
       "description": "Deliver approved Linear issues through Pstack with cross-harness review, applicable specialist checks, in-session browser evidence and portable checkpoints.",
       "version": "0.1.11"
     }

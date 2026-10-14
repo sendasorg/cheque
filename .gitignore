@@ -1,7 +1,7 @@
 node_modules/
 .DS_Store
 *.log
-# Stroppers runtime state, run artifacts and private overrides (dogfooding)
-.stroppers/state/
-.stroppers/artifacts/
-.stroppers/config.local.yaml
+# cheque runtime state, run artifacts and private overrides (dogfooding)
+.cheque/state/
+.cheque/artifacts/
+.cheque/config.local.yaml

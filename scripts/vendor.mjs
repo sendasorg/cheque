@@ -13,7 +13,7 @@ import { readdirSync, statSync } from 'node:fs';
 const root = join(dirname(new URL(import.meta.url).pathname), '..');
 const manifestPath = join(root, 'dependencies.json');
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-const cacheRoot = process.env.STROPPERS_VENDOR_CACHE || join(tmpdir(), 'stroppers-vendor-cache');
+const cacheRoot = process.env.CHEQUE_VENDOR_CACHE || join(tmpdir(), 'cheque-vendor-cache');
 
 function git(args, cwd) {
   return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
@@ -102,7 +102,7 @@ function update(name, sha) {
   source.sha = sha;
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
   sync(source);
-  console.log('Review `git diff` before committing. Roll back with `git checkout -- dependencies.json plugins/stroppers/vendor`.');
+  console.log('Review `git diff` before committing. Roll back with `git checkout -- dependencies.json plugins/cheque/vendor`.');
 }
 
 const [cmd, ...args] = process.argv.slice(2);

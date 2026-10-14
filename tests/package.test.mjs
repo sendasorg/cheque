@@ -8,25 +8,25 @@ const json = (p) => JSON.parse(readFileSync(join(root, p), 'utf8'));
 
 test('plugin version is identical in both harness manifests and the marketplace', () => {
   // Harnesses cache installed plugins by version: an unbumped release is never picked up.
-  const claude = json('plugins/stroppers/.claude-plugin/plugin.json').version;
-  const codex = json('plugins/stroppers/.codex-plugin/plugin.json').version;
-  const market = json('.claude-plugin/marketplace.json').plugins.find((p) => p.name === 'stroppers').version;
+  const claude = json('plugins/cheque/.claude-plugin/plugin.json').version;
+  const codex = json('plugins/cheque/.codex-plugin/plugin.json').version;
+  const market = json('.claude-plugin/marketplace.json').plugins.find((p) => p.name === 'cheque').version;
   assert.equal(codex, claude);
   assert.equal(market, claude);
 });
 
 test('both marketplaces point at the plugin directory', () => {
-  assert.equal(json('.claude-plugin/marketplace.json').plugins[0].source, './plugins/stroppers');
-  assert.equal(json('.agents/plugins/marketplace.json').plugins[0].source.path, './plugins/stroppers');
+  assert.equal(json('.claude-plugin/marketplace.json').plugins[0].source, './plugins/cheque');
+  assert.equal(json('.agents/plugins/marketplace.json').plugins[0].source.path, './plugins/cheque');
 });
 
 function walk(dir) {
   return readdirSync(dir).flatMap((e) => (statSync(join(dir, e)).isDirectory() ? walk(join(dir, e)) : [join(dir, e)]));
 }
 
-test('every relative link in Stroppers skills and vendored skills resolves', () => {
+test('every relative link in cheque skills and vendored skills resolves', () => {
   const broken = [];
-  const files = walk(join(root, 'plugins/stroppers')).filter((f) => f.endsWith('.md'));
+  const files = walk(join(root, 'plugins/cheque')).filter((f) => f.endsWith('.md'));
   for (const f of files) {
     const text = readFileSync(f, 'utf8').replace(/```[\s\S]*?```/g, '');
     for (const [, target] of text.matchAll(/\]\(([^)\s#]+)(?:#[^)]*)?\)/g)) {
@@ -42,10 +42,10 @@ test('every relative link in Stroppers skills and vendored skills resolves', () 
   assert.ok(known.length < 25, `pstack broken links grew: ${known.length}`);
 });
 
-test('no Stroppers skill name collides with a vendored upstream skill name', () => {
-  const own = readdirSync(join(root, 'plugins/stroppers/skills'));
-  // Own skills are namespaced by the plugin (stroppers:<name>) in both harnesses;
+test('no cheque skill name collides with a vendored upstream skill name', () => {
+  const own = readdirSync(join(root, 'plugins/cheque/skills'));
+  // Own skills are namespaced by the plugin (cheque:<name>) in both harnesses;
   // vendored skills are never registered, so bare upstream names stay free.
-  assert.ok(!existsSync(join(root, 'plugins/stroppers/skills/poteto-mode')));
+  assert.ok(!existsSync(join(root, 'plugins/cheque/skills/poteto-mode')));
   assert.deepEqual(own.sort(), ['deliver', 'grill-me', 'grill-with-docs']);
 });

@@ -49,19 +49,19 @@ test('standalone upstream skills, shared documents and team instructions survive
   assert.deepEqual(read(), original, 'uninstalled');
 });
 
-test('the cloud entry uses a Stroppers-only name and never replaces an upstream skill', () => {
+test('the cloud entry uses a cheque-only name and never replaces an upstream skill', () => {
   const repo = tempRepo(STANDALONE);
   run(repo, isolatedEnv(), 'install', '--cloud-entry');
   const names = execFileSync('git', ['ls-files', '--others', '--exclude-standard'], { cwd: repo, encoding: 'utf8' }).split('\n').filter((p) => p.endsWith('SKILL.md'));
-  assert.deepEqual(names.sort(), ['.agents/skills/stroppers/SKILL.md', '.claude/skills/stroppers/SKILL.md']);
+  assert.deepEqual(names.sort(), ['.agents/skills/cheque/SKILL.md', '.claude/skills/cheque/SKILL.md']);
 });
 
 test('two developers with different private settings resolve different authority from the same repository', () => {
-  const repo = tempRepo({ '.stroppers/config.yaml': 'version: 1\nlinear:\n  workspace: acme\n  team: ENG\n' });
+  const repo = tempRepo({ '.cheque/config.yaml': 'version: 1\nlinear:\n  workspace: acme\n  team: ENG\n' });
   const alice = isolatedEnv();
   const bob = isolatedEnv();
-  write(alice.HOME, '.config/stroppers/operator.yaml', 'authority:\n  owners:\n    - linear_user_id: alice-id\n  repositories:\n    - acme/app\n');
-  write(bob.HOME, '.config/stroppers/operator.yaml', 'harness:\n  default: codex\n');
+  write(alice.HOME, '.config/cheque/operator.yaml', 'authority:\n  owners:\n    - linear_user_id: alice-id\n  repositories:\n    - acme/app\n');
+  write(bob.HOME, '.config/cheque/operator.yaml', 'harness:\n  default: codex\n');
   const explain = (env) => JSON.parse(run(repo, env, 'config', 'explain', '--json').stdout).effective;
   assert.deepEqual(explain(alice).authority.owners, [{ linear_user_id: 'alice-id' }]);
   assert.equal(explain(alice).harness.default, 'claude-code');
@@ -72,7 +72,7 @@ test('two developers with different private settings resolve different authority
   assert.deepEqual(snapshot(bob.HOME), bobBefore, 'Alice installing does not touch Bob');
 });
 
-test('missing Stroppers configuration blocks only Stroppers commands', () => {
+test('missing cheque configuration blocks only cheque commands', () => {
   const repo = tempRepo(STANDALONE);
   const r = run(repo, isolatedEnv(), 'doctor', '--json');
   assert.equal(r.status, 3);
@@ -85,9 +85,9 @@ test('the session model map is written to ignored state, never to the global Pst
   const repo = tempRepo();
   run(repo, env, 'install');
   const path = run(repo, env, 'models').stdout.trim();
-  assert.equal(path, join(repo, '.stroppers', 'state', 'pstack-models.md'));
+  assert.equal(path, join(repo, '.cheque', 'state', 'pstack-models.md'));
   assert.equal(existsSync(join(env.HOME, '.agents', 'pstack-models.md')), false);
-  assert.match(execFileSync('git', ['check-ignore', '.stroppers/state/pstack-models.md'], { cwd: repo, encoding: 'utf8' }), /pstack-models/);
+  assert.match(execFileSync('git', ['check-ignore', '.cheque/state/pstack-models.md'], { cwd: repo, encoding: 'utf8' }), /pstack-models/);
 });
 
 test('--implementer cannot contradict the harness running the session', () => {

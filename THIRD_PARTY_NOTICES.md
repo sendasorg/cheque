@@ -1,7 +1,7 @@
 # Third-party notices
 
-Stroppers bundles the following components unmodified under
-`plugins/stroppers/vendor/`. Each directory keeps its upstream license file.
+`cheque` bundles the following components unmodified under
+`plugins/cheque/vendor/`. Each directory keeps its upstream license file.
 Exact revisions are pinned in `dependencies.json`.
 
 | Component | Source | License | Copyright |
@@ -11,7 +11,7 @@ Exact revisions are pinned in `dependencies.json`.
 | skills (grill-with-docs, grill-me, grilling, domain-modeling) | https://github.com/mattpocock/skills | MIT | Copyright (c) 2026 Matt Pocock |
 | codex-plugin-cc (review output schema) | https://github.com/openai/codex-plugin-cc | Apache-2.0 | Copyright 2026 OpenAI (see `vendor/codex-plugin-cc/NOTICE`) |
 
-`plugins/stroppers/schemas/findings.schema.json` is derived from
+`plugins/cheque/schemas/findings.schema.json` is derived from
 codex-plugin-cc's `review-output.schema.json` (Apache-2.0): it adds the
 `scenario` and `evidence` finding fields.
 

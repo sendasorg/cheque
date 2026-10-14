@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { contractHash, renderContract, newCheckpoint, render, parse, recordAttempt, intend, complete, pendingActions, setHead, recordOutcome, acceptanceSummary, acquireLease, taskKey, validateContract } from '../plugins/stroppers/lib/checkpoint.mjs';
-import { verifyApproval, applyApproval, authorizeAction } from '../plugins/stroppers/lib/approval.mjs';
-import { fetchIssue, LinearError } from '../plugins/stroppers/lib/linear.mjs';
+import { contractHash, renderContract, newCheckpoint, render, parse, recordAttempt, intend, complete, pendingActions, setHead, recordOutcome, acceptanceSummary, acquireLease, taskKey, validateContract } from '../plugins/cheque/lib/checkpoint.mjs';
+import { verifyApproval, applyApproval, authorizeAction } from '../plugins/cheque/lib/approval.mjs';
+import { fetchIssue, LinearError } from '../plugins/cheque/lib/linear.mjs';
 
 const OWNER = 'owner-user-id';
 const contract = {
@@ -33,7 +33,7 @@ test('contract hash is stable across key order', () => {
 });
 
 test('an owner comment naming the current revision approves', () => {
-  const r = verifyApproval({ issue, comments: [agentContract(), ownerSays(`stroppers approve ${REV}`)], owners: [OWNER], expectedRevision: REV, workspace: 'ws-1' });
+  const r = verifyApproval({ issue, comments: [agentContract(), ownerSays(`cheque approve ${REV}`)], owners: [OWNER], expectedRevision: REV, workspace: 'ws-1' });
   assert.equal(r.status, 'approved');
   assert.equal(r.actor_id, OWNER);
   assert.deepEqual(r.scope.environments, ['preview']);
@@ -41,19 +41,19 @@ test('an owner comment naming the current revision approves', () => {
 
 test('an agent-authored approval through a connector cannot self-authorize', () => {
   const posted = agentContract();
-  const forged = ownerSays(`stroppers approve ${REV}`, { botActor: { id: 'app', name: 'Claude', type: 'oauthClient' } });
+  const forged = ownerSays(`cheque approve ${REV}`, { botActor: { id: 'app', name: 'Claude', type: 'oauthClient' } });
   const r = verifyApproval({ issue, comments: [posted, forged], owners: [OWNER], expectedRevision: REV });
   assert.equal(r.status, 'pending');
   assert.match(r.considered[0].why, /integration/);
-  const behalf = ownerSays(`stroppers approve ${REV}`, { onBehalfOf: { id: OWNER } });
+  const behalf = ownerSays(`cheque approve ${REV}`, { onBehalfOf: { id: OWNER } });
   assert.equal(verifyApproval({ issue, comments: [posted, behalf], owners: [OWNER] }).status, 'pending');
 });
 
 test('a non-owner, display-name lookalike or edited comment does not approve', () => {
   const posted = agentContract();
   const cases = [
-    [ownerSays(`stroppers approve ${REV}`, { user: { id: 'someone-else', name: 'Owner' } }), /not a configured approval owner/],
-    [ownerSays(`stroppers approve ${REV}`, { editedAt: at() }), /edited/],
+    [ownerSays(`cheque approve ${REV}`, { user: { id: 'someone-else', name: 'Owner' } }), /not a configured approval owner/],
+    [ownerSays(`cheque approve ${REV}`, { editedAt: at() }), /edited/],
   ];
   for (const [c, why] of cases) {
     const r = verifyApproval({ issue, comments: [posted, c], owners: [OWNER] });
@@ -64,45 +64,45 @@ test('a non-owner, display-name lookalike or edited comment does not approve', (
 
 test('approval of an older revision is stale and does not authorize the changed contract', () => {
   const old = contractHash({ ...contract, scope: 'smaller' });
-  assert.equal(verifyApproval({ issue, comments: [agentContract(), ownerSays(`stroppers approve ${old}`)], owners: [OWNER] }).status, 'stale');
+  assert.equal(verifyApproval({ issue, comments: [agentContract(), ownerSays(`cheque approve ${old}`)], owners: [OWNER] }).status, 'stale');
 });
 
 test('approval made before the contract was posted does not count', () => {
-  const early = ownerSays(`stroppers approve ${REV}`);
+  const early = ownerSays(`cheque approve ${REV}`);
   assert.equal(verifyApproval({ issue, comments: [early, agentContract()], owners: [OWNER] }).status, 'pending');
 });
 
 test('owner revocation and issue cancellation stop delivery', () => {
-  const comments = [agentContract(), ownerSays(`stroppers approve ${REV}`), ownerSays('stroppers revoke')];
+  const comments = [agentContract(), ownerSays(`cheque approve ${REV}`), ownerSays('cheque revoke')];
   assert.equal(verifyApproval({ issue, comments, owners: [OWNER] }).status, 'revoked');
   assert.equal(verifyApproval({ issue: { ...issue, state_type: 'canceled' }, comments: comments.slice(0, 2), owners: [OWNER] }).status, 'revoked');
 });
 
 test('an owner scope extension approves the widened revision now posted', () => {
   const posted = agentContract();
-  const ext = ownerSays(`stroppers extend ${REV}`);
+  const ext = ownerSays(`cheque extend ${REV}`);
   const r = verifyApproval({ issue, comments: [posted, ext], owners: [OWNER] });
   assert.equal(r.status, 'approved');
   assert.deepEqual(r.extensions, [ext.id]);
-  const forged = ownerSays(`stroppers extend ${REV}`, { user: { id: 'agent-app' } });
+  const forged = ownerSays(`cheque extend ${REV}`, { user: { id: 'agent-app' } });
   assert.equal(verifyApproval({ issue, comments: [agentContract(), forged], owners: [OWNER] }).status, 'pending');
 });
 
 test('the most recent owner approval is the one reported', () => {
   const posted = agentContract();
-  const first = ownerSays(`stroppers approve ${REV}`);
-  const second = ownerSays(`stroppers approve ${REV}`);
+  const first = ownerSays(`cheque approve ${REV}`);
+  const second = ownerSays(`cheque approve ${REV}`);
   assert.equal(verifyApproval({ issue, comments: [posted, first, second], owners: [OWNER] }).event_id, second.id);
 });
 
 test('wrong workspace is rejected before approval is considered', () => {
-  const r = verifyApproval({ issue: { ...issue, workspace_id: 'ws-2' }, comments: [agentContract(), ownerSays(`stroppers approve ${REV}`)], owners: [OWNER], workspace: 'ws-1' });
+  const r = verifyApproval({ issue: { ...issue, workspace_id: 'ws-2' }, comments: [agentContract(), ownerSays(`cheque approve ${REV}`)], owners: [OWNER], workspace: 'ws-1' });
   assert.equal(r.status, 'rejected');
 });
 
 test('applying the same approval event twice is idempotent and revocation is not undone', () => {
   const cp = newCheckpoint({ binding: { workspace: 'ws-1', team: 'ENG' }, issue, repository: 'acme/shop', runId: 'r1', harness: 'claude-code', mode: 'local', contract });
-  const r = verifyApproval({ issue, comments: [agentContract(), ownerSays(`stroppers approve ${REV}`)], owners: [OWNER] });
+  const r = verifyApproval({ issue, comments: [agentContract(), ownerSays(`cheque approve ${REV}`)], owners: [OWNER] });
   assert.equal(applyApproval(cp, r).changed, true);
   assert.equal(applyApproval(cp, r).changed, false);
   applyApproval(cp, { status: 'revoked', reason: 'owner' });
@@ -112,7 +112,7 @@ test('applying the same approval event twice is idempotent and revocation is not
 
 test('delivery actions outside the approved repositories or environments need an extension', () => {
   const cp = newCheckpoint({ binding: { workspace: 'ws-1', team: 'ENG' }, issue, repository: 'acme/shop', runId: 'r1', harness: 'codex', mode: 'cloud', contract });
-  const latest = verifyApproval({ issue, comments: [agentContract(), ownerSays(`stroppers approve ${REV}`)], owners: [OWNER] });
+  const latest = verifyApproval({ issue, comments: [agentContract(), ownerSays(`cheque approve ${REV}`)], owners: [OWNER] });
   const authority = { repositories: ['acme/shop'], environments: ['preview'] };
   assert.equal(authorizeAction(cp, latest, { action: 'deploy', environment: 'preview', authority }).ok, true);
   assert.equal(authorizeAction(cp, latest, { action: 'merge', repository: 'acme/shop', authority }).ok, true);
@@ -192,7 +192,7 @@ test('completion requires every approved criterion: unplanned, old-revision and 
 });
 
 test('a restored checkpoint whose snapshot was edited is rejected', async () => {
-  const { validateRestored } = await import('../plugins/stroppers/lib/checkpoint.mjs');
+  const { validateRestored } = await import('../plugins/cheque/lib/checkpoint.mjs');
   const cp = newCheckpoint({ binding: { workspace: 'w', team: 't' }, issue, repository: 'a/b', runId: 'r', harness: 'codex', mode: 'local', contract });
   assert.deepEqual(validateRestored(parse(render(cp)), { repository: 'a/b' }), []);
   const tampered = parse(render(cp));
@@ -209,7 +209,7 @@ test('a second session is refused while another holds the lease', () => {
 });
 
 test('a session that stops gives up its lease so the next one can continue', async () => {
-  const { setStage } = await import('../plugins/stroppers/lib/checkpoint.mjs');
+  const { setStage } = await import('../plugins/cheque/lib/checkpoint.mjs');
   const cp = newCheckpoint({ binding: { workspace: 'w', team: 't' }, issue, repository: 'a/b', runId: 'r', harness: 'codex', mode: 'local', contract });
   acquireLease(cp, 'session-a');
   setStage(cp, 'blocked', 'waiting for owner');
@@ -243,7 +243,7 @@ test('fetchIssue refuses a credential that authenticates to a different workspac
 });
 
 test('an owner verification key is a blocker only when it can write', async () => {
-  const { credentialRisk } = await import('../plugins/stroppers/lib/linear.mjs');
+  const { credentialRisk } = await import('../plugins/cheque/lib/linear.mjs');
   const reply = (message) => async () => ({ status: 200, json: async () => ({ errors: [{ message }] }) });
   const config = { linear: { credential_env: 'K' } };
   const env = { K: 'x' };
@@ -269,7 +269,7 @@ function fakeLinearApi({ viewer = { id: 'agent-app', app: true }, org = { id: 'o
 }
 
 test('agent writes use an app token minted from client credentials and cached privately', async () => {
-  const { agentToken } = await import('../plugins/stroppers/lib/linear.mjs');
+  const { agentToken } = await import('../plugins/cheque/lib/linear.mjs');
   const { tempDir } = await import('./helpers.mjs');
   const { statSync } = await import('node:fs');
   const config = { linear: { agent_client_id_env: 'CID', agent_client_secret_env: 'CSEC' } };
@@ -283,7 +283,7 @@ test('agent writes use an app token minted from client credentials and cached pr
 });
 
 test('an agent credential that acts as a person or an owner is refused', async () => {
-  const { checkAgent } = await import('../plugins/stroppers/lib/linear.mjs');
+  const { checkAgent } = await import('../plugins/cheque/lib/linear.mjs');
   const { tempDir } = await import('./helpers.mjs');
   const config = { linear: { workspace: 'acme', agent_client_id_env: 'CID', agent_client_secret_env: 'CSEC' } };
   await assert.rejects(checkAgent(config, { CID: 'id', CSEC: 's' }, tempDir(), [], fakeLinearApi({ viewer: { id: 'u', app: false } }).fn), /acts as a person/);
@@ -291,12 +291,12 @@ test('an agent credential that acts as a person or an owner is refused', async (
 });
 
 test('the checkpoint comment is updated in place; other comments are new', async () => {
-  const { upsertComment } = await import('../plugins/stroppers/lib/linear.mjs');
+  const { upsertComment } = await import('../plugins/cheque/lib/linear.mjs');
   const { tempDir } = await import('./helpers.mjs');
   const config = { linear: { workspace: 'acme', team: 'ENG', agent_client_id_env: 'CID', agent_client_secret_env: 'CSEC' }, authority: { owners: [{ linear_user_id: OWNER }] } };
-  const comments = [{ id: 'cp1', body: '<!-- stroppers:checkpoint v1 -->\nold', user: { id: 'agent-app' } }, { id: 'h1', body: '<!-- stroppers:checkpoint v1 -->\nforged by a person', user: { id: OWNER } }];
+  const comments = [{ id: 'cp1', body: '<!-- cheque:checkpoint v1 -->\nold', user: { id: 'agent-app' } }, { id: 'h1', body: '<!-- cheque:checkpoint v1 -->\nforged by a person', user: { id: OWNER } }];
   const api = fakeLinearApi({ comments });
-  const r = await upsertComment(config, { CID: 'id', CSEC: 's' }, tempDir(), 'ENG-1', '<!-- stroppers:checkpoint v1 -->\nnew', { marker: '<!-- stroppers:checkpoint v1 -->', fetchImpl: api.fn });
+  const r = await upsertComment(config, { CID: 'id', CSEC: 's' }, tempDir(), 'ENG-1', '<!-- cheque:checkpoint v1 -->\nnew', { marker: '<!-- cheque:checkpoint v1 -->', fetchImpl: api.fn });
   assert.deepEqual([r.action, r.id], ['updated', 'cp1']);
   assert.ok(api.calls.every((c) => c.url.endsWith('/oauth/token') || c.auth === 'Bearer app-token'));
   const created = await upsertComment(config, { CID: 'id', CSEC: 's' }, tempDir(), 'ENG-1', 'evidence', { fetchImpl: api.fn });

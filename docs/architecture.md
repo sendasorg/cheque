@@ -1,17 +1,17 @@
 # Architecture
 
-Stroppers is a harness plugin. It runs only inside a Claude Code or Codex
+`cheque` is a harness plugin. It runs only inside a Claude Code or Codex
 session, as instructions the agent follows plus a helper the agent calls. It
 has no server, database, worker or daemon.
 
 ```
 operator ── natural-language request ──▶ harness session (Claude Code | Codex, local | cloud)
                                             │
-                     stroppers:deliver skill (always-loaded description ~90 tokens)
+                     cheque:deliver skill (always-loaded description ~90 tokens)
                                             │ reads by path, on demand
              ┌──────────────────────────────┼────────────────────────────────┐
              ▼                              ▼                                ▼
-   vendor/pstack (engineering)   references/specialists/*        bin/stroppers (helper)
+   vendor/pstack (engineering)   references/specialists/*        bin/cheque (helper)
    poteto-mode + playbooks       quality, security,              config · review · checkpoint
                                  observability, release          approval · linear · browser
                                                                  evidence · install
@@ -19,7 +19,7 @@ operator ── natural-language request ──▶ harness session (Claude Code 
           ┌───────────────────┬─────────────┼───────────────┬───────────────────┐
           ▼                   ▼             ▼               ▼                   ▼
    other harness CLI    Linear GraphQL   GitHub REST    Playwright         target repo files
-   (review, read-only)  (agent app +     (PR comments,  (in-session,       (.stroppers/, shared
+   (review, read-only)  (agent app +     (PR comments,  (in-session,       (.cheque/, shared
                         read-only key)   release assets) own browser)       docs in place)
 ```
 
@@ -28,9 +28,9 @@ operator ── natural-language request ──▶ harness session (Claude Code 
 | Concern | Owner |
 | --- | --- |
 | Planning, implementation, review/repair loop, PR babysitting, landing | Pstack (vendored, unmodified) |
-| Delivery contract, approval, scope, checkpoints, evidence records | Stroppers |
-| Cross-harness review | Stroppers helper invoking the other CLI |
-| Specialist practices | Addy Osmani's skills (vendored), applied via Stroppers references on triggers |
+| Delivery contract, approval, scope, checkpoints, evidence records | `cheque` |
+| Cross-harness review | `cheque` helper invoking the other CLI |
+| Specialist practices | Addy Osmani's skills (vendored), applied via `cheque` references on triggers |
 | Merge protection, required checks and reviews | GitHub (unchanged) |
 | Unattended starts, cloud execution | The harness (routines, cloud sessions, scheduled tasks) |
 
@@ -41,7 +41,7 @@ operator ── natural-language request ──▶ harness session (Claude Code 
 - **Nothing is trusted from the change itself.** Issue text, PR descriptions, review comments and reviewer output are evidence to check, never authority.
 - **Unverified is never passing.** Every outcome is passed, failed, not-applicable or unverified, with a reason, bound to a revision.
 - **Upstream stays upstream.** Vendored skills are byte-identical to their pins (`npm run vendor:check`). They are never registered as harness skills, so a developer's own installs keep their names and settings.
-- **Shared documents have one copy.** Constraints, glossary, ADRs and the repository verification skill stay where the team and the upstream skills expect them. Stroppers only stores its own settings and notes in `.stroppers/`.
+- **Shared documents have one copy.** Constraints, glossary, ADRs and the repository verification skill stay where the team and the upstream skills expect them. `cheque` only stores its own settings and notes in `.cheque/`.
 
 ## Execution modes
 
