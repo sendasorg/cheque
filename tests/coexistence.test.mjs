@@ -89,3 +89,12 @@ test('the session model map is written to ignored state, never to the global Pst
   assert.equal(existsSync(join(env.HOME, '.agents', 'pstack-models.md')), false);
   assert.match(execFileSync('git', ['check-ignore', '.stroppers/state/pstack-models.md'], { cwd: repo, encoding: 'utf8' }), /pstack-models/);
 });
+
+test('--implementer cannot contradict the harness running the session', () => {
+  const repo = tempRepo();
+  const r = run(repo, isolatedEnv({ CLAUDECODE: '1' }), 'review', 'select', '--implementer', 'codex');
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /contradicts/);
+  const ok = run(repo, isolatedEnv({ CLAUDECODE: '1' }), 'review', 'select', '--available', 'claude-code,codex', '--json');
+  assert.equal(JSON.parse(ok.stdout).harness, 'codex');
+});

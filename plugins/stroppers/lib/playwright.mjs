@@ -165,9 +165,14 @@ export function cleanupAbandoned(artifactsRoot) {
     const marker = join(dir, 'running.json');
     if (!existsSync(marker) || existsSync(join(dir, 'record.json'))) continue;
     const { pgid } = JSON.parse(readFileSync(marker, 'utf8'));
-    try {
-      process.kill(-pgid, 'SIGTERM');
-    } catch {}
+    // Only signal the group if its leader is still a Playwright run: after a
+    // reboot the id may belong to an unrelated process.
+    const leader = spawnSync('ps', ['-o', 'command=', '-p', String(pgid)], { encoding: 'utf8' }).stdout || '';
+    if (/playwright/.test(leader)) {
+      try {
+        process.kill(-pgid, 'SIGTERM');
+      } catch {}
+    }
     writeFileSync(join(dir, 'record.json'), JSON.stringify({ run_id: run, status: 'unverified', reason: 'run was interrupted and cleaned up on continuation; rerun it' }, null, 2));
     cleaned.push(run);
   }

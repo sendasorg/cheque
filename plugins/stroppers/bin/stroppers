@@ -345,7 +345,11 @@ const commands = {
   async review() {
     const { effective } = config();
     const c = loadCheckpoint(false);
-    const implementer = opt.implementer || c?.execution?.implementer || detectSession().harness || harnessForStep(effective, 'implement');
+    // The implementer is what the checkpoint recorded, else the harness running
+    // this session. --implementer may only fill a gap, never contradict them.
+    const known = c?.execution?.implementer || detectSession().harness;
+    if (opt.implementer && known && opt.implementer !== known) fail(`--implementer ${opt.implementer} contradicts the recorded or running implementer ${known}`);
+    const implementer = known || opt.implementer || harnessForStep(effective, 'implement');
     const available = opt.available
       ? opt.available.split(',')
       : Object.keys(effective.adapters).filter((id) => effective.adapters[id].enabled !== false && adapterFor(effective, id).authCheck(reviewerEnv()).ok);

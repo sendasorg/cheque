@@ -83,3 +83,15 @@ test('untracked files make the tree unclean even when git hides them from status
   write(repo, 'e2e/new.spec.js', 'test');
   assert.match(treeChanges(repo), /new\.spec\.js/);
 });
+
+test('cleanup marks interrupted runs unverified and never signals a non-Playwright process', async () => {
+  const { cleanupAbandoned } = await import('../plugins/stroppers/lib/playwright.mjs');
+  const { readFileSync: r } = await import('node:fs');
+  const root = tempDir();
+  write(root, 'run-a/running.json', JSON.stringify({ pgid: process.pid }));
+  write(root, 'run-b/running.json', JSON.stringify({ pgid: 1 }));
+  write(root, 'run-b/record.json', '{"status":"passed"}');
+  assert.deepEqual(cleanupAbandoned(root), ['run-a']);
+  assert.equal(JSON.parse(r(join(root, 'run-a/record.json'), 'utf8')).status, 'unverified');
+  assert.equal(JSON.parse(r(join(root, 'run-b/record.json'), 'utf8')).status, 'passed', 'finished runs are left alone');
+});

@@ -29,7 +29,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-003.3 | Deployable changes need target-environment application and live acceptance | unverified | why: no deployable delivery with live acceptance exercised |
 | R-003.4 | Non-deployable artifacts use explicitly defined artifact acceptance | verified | file: references/verification.md (artifact acceptance); test: specialists docs-only -> release not applicable |
 | R-003.5 | Observation windows / human judgment stay visible as outstanding acceptance | verified | file: SKILL.md step 9, release-readiness.md (observation windows stay open) |
-| R-003.6 | Setup reproducible on another machine | in-progress | why: install from pinned tag pending release tag v0.1.7; fresh-machine replay pending |
+| R-003.6 | Setup reproducible on another machine | in-progress | why: setup reproducible from pinned sources; install-from-tag pending release tag |
 | R-003.7 | Use harness-native local/cloud execution and native scheduling/triggers | verified | run: VR#12 Claude routine; docs/capability-matrix.md |
 | R-003.8 | No custom controller, Eve, database, persistent worker or laptop daemon | verified | file: no server code in repo; docs/architecture.md |
 | R-004.1 | Natural language primary; namespaced commands optional shortcuts; no per-task ceremony | verified | run: VR PRE-5 one-line request; file: skills/deliver description |
@@ -178,7 +178,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-044.1 | Project-scoped install inheriting private operator policy | verified | run: claude plugin install --scope project; operator layer separate |
 | R-044.2 | Idempotent install | verified | test: install idempotent |
 | R-044.3 | Pinned dependency update with inspectable diff | verified | file: scripts/vendor.mjs update (diff then repin); README update steps |
-| R-044.4 | Rollback to previous compatible version | verified | run: marketplace pinned by #ref observed (pilot pinned to branch, version-keyed updates 0.1.0->0.1.6); README rollback steps; rollback to a tag not exercised |
+| R-044.4 | Rollback to previous compatible version | unverified | why: marketplace #ref pinning observed; rollback to an earlier tag not exercised (no earlier tag exists) |
 | R-044.5 | Safe uninstall | verified | test: uninstall tests |
 | R-044.6 | Track managed files/sections; preserve unrelated content; report conflicts | verified | test: conflicts reported, unrelated content preserved |
 | R-044.7 | Updates retain delivery state/approvals or checkpoint incompatible runs | verified | file: checkpoint lives in Linear; schema version refusal in checkpoint.parse |
@@ -241,7 +241,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | --- | --- | --- | --- |
 | R-059.1 | Global default harness = Claude Code; steps inherit unless overridden | verified | file: defaults.yaml harness.default claude-code; test: harnessForStep |
 | R-059.2 | Default reviewer policy `different-harness` | verified | file: defaults.yaml policy different-harness |
-| R-059.3 | Resolve against actual implementing harness incl. step overrides | verified | test: selection follows implementer; file: detectSession |
+| R-059.3 | Resolve against actual implementing harness incl. step overrides | verified | test: --implementer cannot contradict the running harness; selection follows implementer |
 | R-059.4 | Cross-harness review is a workflow step, not fallback | verified | file: lib/harness.mjs fallbackAllowed separate |
 | R-060.1 | Explicit reviewer override wins and survives default changes | verified | test: explicit override survives default change |
 | R-060.2 | Explicit same-harness fresh-context policy allowed; never automatic downgrade | verified | test: same-harness only by policy; CLI --reviewer routed through selectReviewer; runReview refuses implementer self-review |
@@ -287,7 +287,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-069.2 | Reuse existing authenticated connectors | verified | file: gh CLI and harness auth reused |
 | R-070.1 | Unattended schedules are native cloud runs, not desktop schedules | verified | run: Claude routine (cloud) used, not desktop schedule |
 | R-070.2 | Both harnesses via their actual packaging/loading mechanisms; one workflow source of truth | verified | run: Claude plugin + Codex plugin load (VR#3,#4) |
-| R-070.3 | Demonstrate each path; document limitations | verified | file: capability matrix documents each path and limitation |
+| R-070.3 | Demonstrate each path; document limitations | unverified | why: Claude local/cloud-entry and Codex local demonstrated; Codex cloud path not demonstrated |
 | R-071.1 | Approved cloud work continues with laptop asleep | unverified | why: cloud run executed in vendor VM, but no approved delivery ran unattended and the laptop was not closed |
 | R-071.2 | Document triggers, cadence/limits, settings, credential renewal, env setup, dropped/repeated events, recovery | verified | file: capability matrix + README Unattended runs |
 | R-071.3 | Contract validated at each continuation; trigger payload not approval | verified | file: SKILL.md continue re-verifies approval; routine fire text is untrusted (docs) |
@@ -346,7 +346,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-088.3 | Prove integration can establish actor and revision, else report gap | unverified | why: actor/revision proven for app writes and owner UI comments; connector (MCP) attribution not demonstrated |
 | R-089.1 | Acceptance: approve once in Linear | verified | run: PRE-5 approved in Linear; caveat: a second approval was requested because the pilot history contained a probe written with an owner write key |
 | R-089.2 | Acceptance: both harnesses honor same grant | verified | run: VR#11 |
-| R-089.3 | Acceptance: agent-authored approval cannot self-authorize | verified | run: VR#9 Stroppers app approval rejected. Limitation: approvals written through a harness Linear connector signed in as an owner were not tested; README tells operators to keep such connectors out of delivery sessions |
+| R-089.3 | Acceptance: agent-authored approval cannot self-authorize | unverified | why: Stroppers-app approvals proven rejected (VR#9); approvals written through a harness Linear connector signed in as an owner not tested |
 | R-089.4 | Acceptance: changed scope requires extension | verified | test: stale revision; extension |
 | R-089.5 | Acceptance: revoked/stale approvals cannot start delivery | verified | test: revoked/stale cannot authorize |
 | R-090.1 | Operator-run branches trusted; no extra branch/fork gate | verified | file: no branch trust gate |
@@ -373,7 +373,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-095.1 | Installation vs delivery vs observation acceptance distinguished | verified | file: verification.md, validation-report sections |
 | R-095.2 | Non-deployables get artifact acceptance | verified | test: docs-only artifact acceptance routing |
 | R-095.3 | Comments/merges/active session not acceptance substitutes | verified | run: PRE-5 not completed at merge alone |
-| R-096.1 | Local workflow runs Playwright locally; cloud in its harness session | verified | run: local runs local; cloud attempt in cloud session (blocked by allowlist, reported) |
+| R-096.1 | Local workflow runs Playwright locally; cloud in its harness session | unverified | why: local runs verified; cloud browser run blocked (R-104.1) |
 | R-096.2 | No remote machine/hosted browser/VM/Actions browser runner; not a required check | verified | file: no runner services |
 | R-097.1 | Run actual change, video relevant journeys, publish via PR description/comments | verified | run: VR#7 video on PR |
 | R-097.2 | Alex Urbano practice treated as operator-provided, not transcript-verified | reference | why: provenance note |
@@ -407,7 +407,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-109.1 | Unrunnable check: blocked/unverified or alternative; no auto machine/harness switch | verified | run: cloud blocked reported, no machine switch |
 | R-110.1 | Interruption: preserve checkpoints, classify honestly | verified | run: PRE-5 sessions stopped and resumed from checkpoints |
 | R-110.2 | Continue via native mechanism or explicit handoff; reconcile unknown actions first | verified | file: pending action reconciliation; run: PRE-5 run 6 checked PR head before merge |
-| R-110.3 | Replacement runs reproduce revision; no inherited pass; clean abandoned local resources | verified | file: playwright.mjs cleanupAbandoned (stroppers browser cleanup); stale outcomes; run: re-verified at merge commit |
+| R-110.3 | Replacement runs reproduce revision; no inherited pass; clean abandoned local resources | verified | test: cleanupAbandoned marks interrupted runs unverified, signals only Playwright groups; stale outcomes; run: re-verified at merge commit |
 | R-111.1 | Videos linked in PR with revision, results, executor, skipped criteria | verified | run: PR evidence index with revision, executor, results |
 | R-111.2 | Video is not a verdict; API/data/job checks still required | verified | file: index text; API checks in plan |
 | R-112.1 | Supported publication mechanism chosen and demonstrated | verified | run: release assets + PR comment via REST |
@@ -479,7 +479,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-130.7 | Stage 7 repo-specific verification generated and proven | verified | run: pilot PR #4 |
 | R-130.8 | Stage 8 pilot, docs, change set, rollout, README validated on real paths | in-progress | why: pilot done; release rollout pending |
 | R-131.1 | Each stage ends with inspectable files and evidence | verified | file: commits per stage with evidence in this ledger |
-| R-132.1 | Fresh checkout reproduces setup from pinned sources | in-progress | why: pinned-tag install pending release tag |
+| R-132.1 | Fresh checkout reproduces setup from pinned sources | in-progress | why: pinned install from release tag pending |
 | R-132.2 | Second install idempotent and preserving | verified | test: install idempotent |
 | R-132.3 | All skills/refs resolve in both harnesses; capabilities exercised | verified | test: links resolve except listed upstream pstack ones; run: both harness loads |
 | R-132.4 | Simple task: Pstack without interview or all specialists | verified | run: PRE-5 no interview, no extra specialists |
@@ -504,7 +504,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-134.2 | Deliver README, operator guide, update/removal instructions | verified | file: README, docs/configuration.md, operator usage in README |
 | R-134.3 | Deliver pilot change set and validation report with remaining limitations | in-progress | why: pilot PRs #3 and #4; validation report final after re-review |
 | R-135.1 | Native validation and portable checkpoints in scope; no hosting; no runtime/recovery overclaims | verified | file: README unattended expectations; no overclaims in matrix |
-| R-136.1 | Root README with exact tested instructions, aligned to implementation | in-progress | why: README aligned to 0.1.7; clean-machine replay pending |
+| R-136.1 | Root README with exact tested instructions, aligned to implementation | in-progress | why: README aligned to 0.1.10; clean-machine replay pending |
 | R-137.1 | README: purpose, Pstack role, specialists, harnesses, plugin vs runtime vs Playwright | verified | file: README What does what |
 | R-137.2 | README: prerequisites, environments, subscriptions, cloud limits, unsupported paths | verified | file: README Requirements |
 | R-137.3 | README: install/config commands, pinned deps, credential setup, auth | verified | file: README Set up |
@@ -516,7 +516,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-137.9 | README: no hosting, limits, native automation, unattended expectations, update/rollback/uninstall, troubleshooting | verified | file: README Unattended, Update, Troubleshooting |
 | R-137.10 | README: attribution and reference links | verified | file: README License and attribution |
 | R-138.1 | README validated on fresh setup/fixture; record exercised paths | unverified | why: README steps exercised piecewise in the pilot (marketplace add/install, helper install, credentials, doctor, first delivery); not replayed top to bottom on a clean machine |
-| R-138.2 | Samples/commands match schema and entry point | verified | file: README commands checked against bin/stroppers usage (install, update, uninstall, doctor, config); tag reference matches the release tag |
+| R-138.2 | Samples/commands match schema and entry point | in-progress | why: README commands match bin/stroppers usage; install command references the release tag, which is created when the release PR merges |
 | R-138.3 | Second operator can set up without this conversation; provider UI steps explicit | unverified | why: requires an independent operator dry run |
 | R-139.1 | Public-release-ready repo; upstream licenses/attribution preserved; pins/patches recorded | verified | file: LICENSE (MIT), THIRD_PARTY_NOTICES.md, dependencies.json |
 | R-139.2 | Compatible project license selected; no relicensing | verified | file: MIT compatible with MIT/Apache-2.0 components; no relicensing |
@@ -529,7 +529,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-141.3 | Making repo public is a separate authorized publishing action | verified | why: repository remains private; publishing is a separate action |
 | R-142.1 | Fresh user installs/configures/uses without editing core or provisioning | unverified | why: fresh-user setup not replayed end to end on a clean machine |
 | R-142.2 | Local and each cloud session test exact PR revision and export evidence | unverified | why: local verified; Claude cloud blocked by allowlist; Codex cloud blocked |
-| R-142.3 | Local verifies locally; cloud verifies in cloud and continues laptop-asleep; no auto migration | verified | run: local verified locally; cloud browser attempt ran in the cloud session (blocked by allowlist); no migration code |
+| R-142.3 | Local verifies locally; cloud verifies in cloud and continues laptop-asleep; no auto migration | unverified | why: local verified locally; cloud browser verification blocked by the allowlist, laptop-asleep continuation not demonstrated |
 | R-142.4 | Interrupted runs: no silent duplication or stale pass | verified | test: action journal, stale outcomes |
 | R-142.5 | Pilot PR gets durable accessible video evidence | verified | run: PR #1/#3 durable video links |
 | R-142.6 | Public examples clean; upstream licenses/deps resolve | verified | run: tree scan clean; npm run vendor:check; licenses present |
