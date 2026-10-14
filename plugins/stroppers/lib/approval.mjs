@@ -63,8 +63,15 @@ export function verifyApproval({ issue, comments, owners, expectedRevision, work
       approval = c; // the latest valid owner approval is the one reported
     }
     if (extend) {
-      considered.push({ id: c.id, accepted: extend[1] === revision, why: 'scope extension' });
-      if (extend[1] === revision) extensions.push(c.id);
+      // An extension approves the widened revision now on the issue, with the
+      // same authorship, ordering and edit checks as an approval.
+      if (extend[1] !== revision) {
+        considered.push({ id: c.id, accepted: false, why: `extends ${extend[1]}, current contract is ${revision}` });
+        continue;
+      }
+      considered.push({ id: c.id, accepted: true, why: 'owner scope extension of current revision' });
+      extensions.push(c.id);
+      approval = c;
     }
   }
 
@@ -105,10 +112,22 @@ export function applyApproval(cp, result) {
 
 // Gate before any delivery action (PR, merge, deploy). Rechecked immediately
 // before the action against the latest verification, never cached.
-export function authorizeAction(cp, latest, { action, repository, environment }) {
+// Every delivery action names the target it touches. Unknown actions and
+// missing targets are refused.
+const ACTION_TARGETS = { 'publish-pr': 'repository', merge: 'repository', deploy: 'environment', 'configure-environment': 'environment' };
+
+export function authorizeAction(cp, latest, { action, repository, environment, authority = {} }) {
+  const needs = ACTION_TARGETS[action];
+  if (!needs) return { ok: false, reason: `unknown action "${action}"; authorizable actions are ${Object.keys(ACTION_TARGETS).join(', ')}` };
+  if (needs === 'repository' && !repository) return { ok: false, reason: `${action} needs --repository` };
+  if (needs === 'environment' && !environment) return { ok: false, reason: `${action} needs --environment` };
   if (latest.status !== 'approved') return { ok: false, reason: `approval is ${latest.status}: ${latest.reason}` };
   if (latest.contract_revision !== cp.contract.revision) return { ok: false, reason: 'approval does not match the checkpoint contract' };
+  // A target must be inside both the owner-approved contract and the
+  // operator's private authority; approval never widens the operator's limits.
   if (repository && !latest.scope.repositories.includes(repository)) return { ok: false, reason: `${repository} is outside the approved repositories; request a scope extension` };
+  if (repository && !(authority.repositories || []).includes(repository)) return { ok: false, reason: `${repository} is outside the operator's authority.repositories` };
   if (environment && !latest.scope.environments.includes(environment)) return { ok: false, reason: `${environment} is outside the approved environments; request a scope extension` };
+  if (environment && !(authority.environments || []).includes(environment)) return { ok: false, reason: `${environment} is outside the operator's authority.environments` };
   return { ok: true, action };
 }

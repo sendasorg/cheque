@@ -94,23 +94,27 @@ const fromRoot = (p) => (p && !p.startsWith('/') ? root + '/' + p.replace(/^\\.\
 const webServer = cfg.webServer
   ? [].concat(cfg.webServer).map((s) => ({ ...s, cwd: fromRoot(s.cwd || '.'), port: s.url ? undefined : port, url: s.url ? s.url.replace(/:\\d+/, ':' + port) : undefined, reuseExistingServer: false, env: { ...(s.env || {}), PORT: String(port) } }))
   : undefined;
+const enforced = (use = {}) => ({
+  ...use,
+  ...(cfg.webServer ? { baseURL: 'http://127.0.0.1:' + port } : {}),
+  headless: ${headless},
+  video: 'on',
+  trace: 'retain-on-failure',
+  screenshot: 'only-on-failure',
+  channel: undefined,
+  launchOptions: { ...(use.launchOptions || {}), executablePath: undefined },
+});
 export default {
   ...cfg,
   testDir: fromRoot(cfg.testDir || '.'),
   outputDir: ${JSON.stringify(join(outputDir, 'test-results'))},
   reporter: [['json', { outputFile: ${JSON.stringify(join(outputDir, 'results.json'))} }], ['line']],
   webServer,
-  use: {
-    ...(cfg.use || {}),
-    ${'baseURL'}: cfg.webServer ? 'http://127.0.0.1:' + port : cfg.use?.baseURL,
-    headless: ${headless},
-    video: 'on',
-    trace: 'retain-on-failure',
-    screenshot: 'only-on-failure',
-    channel: undefined,
-    launchOptions: { ...(cfg.use?.launchOptions || {}), executablePath: undefined },
-  },
-  projects: (cfg.projects || [{ name: '${browser}' }]).filter((p) => !p.use?.browserName || p.use.browserName === '${browser}').map((p) => ({ ...p, use: { ...(p.use || {}), channel: undefined } })),
+  use: { ...enforced(cfg.use), baseURL: cfg.webServer ? 'http://127.0.0.1:' + port : cfg.use?.baseURL },
+  // Project settings would otherwise override the isolation and evidence settings.
+  projects: (cfg.projects || [{ name: '${browser}' }])
+    .filter((p) => !p.use?.browserName || p.use.browserName === '${browser}')
+    .map((p) => ({ ...p, testDir: p.testDir ? fromRoot(p.testDir) : undefined, use: { ...enforced(p.use), baseURL: cfg.webServer ? 'http://127.0.0.1:' + port : p.use?.baseURL ?? cfg.use?.baseURL } })),
 };
 `;
 }
@@ -136,6 +140,35 @@ export function summarizeResults(resultsPath) {
   return { tests, stats: report.stats || null };
 }
 
+// A run passes only when the runner exited cleanly, at least one test passed,
+// none failed, and the result is bound to a committed revision.
+export function runStatus({ code, tests, clean }) {
+  if (tests.some((t) => t.status === 'failed')) return { status: 'failed', reason: 'one or more browser assertions failed' };
+  if (!tests.some((t) => t.status === 'passed')) return { status: 'unverified', reason: tests.length ? 'every test was skipped' : `no test results (exit ${code}); see run.log` };
+  if (code !== 0) return { status: 'unverified', reason: `Playwright exited ${code} although no assertion failed (setup, teardown or runner error); see run.log` };
+  if (!clean) return { status: 'unverified', reason: 'the working tree had uncommitted changes, so the result is not bound to a commit' };
+  return { status: 'passed', reason: null };
+}
+
+// Local continuation: stop process groups left by runs that never finished
+// (no record.json), and only those this checkout started.
+export function cleanupAbandoned(artifactsRoot) {
+  const cleaned = [];
+  if (!existsSync(artifactsRoot)) return cleaned;
+  for (const run of readdirSync(artifactsRoot)) {
+    const dir = join(artifactsRoot, run);
+    const marker = join(dir, 'running.json');
+    if (!existsSync(marker) || existsSync(join(dir, 'record.json'))) continue;
+    const { pgid } = JSON.parse(readFileSync(marker, 'utf8'));
+    try {
+      process.kill(-pgid, 'SIGTERM');
+    } catch {}
+    writeFileSync(join(dir, 'record.json'), JSON.stringify({ run_id: run, status: 'unverified', reason: 'run was interrupted and cleaned up on continuation; rerun it' }, null, 2));
+    cleaned.push(run);
+  }
+  return cleaned;
+}
+
 export async function runBrowserVerification({ repoRoot, runId, browser = 'chromium', headless = true, maxMinutes = 20, grep = null, artifactsRoot }) {
   const configFile = findPlaywrightConfig(repoRoot);
   if (!configFile) return { status: 'not-applicable', reason: 'no Playwright configuration in the repository' };
@@ -153,6 +186,7 @@ export async function runBrowserVerification({ repoRoot, runId, browser = 'chrom
   const code = await new Promise((resolve) => {
     const child = spawn('npx', args, { cwd: repoRoot, env: { ...process.env, PORT: String(port), STROPPERS_RUN_ID: runId, CI: '1' }, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
     let log = '';
+    writeFileSync(join(outputDir, 'running.json'), JSON.stringify({ pgid: child.pid, started_at: new Date().toISOString() }));
     child.stdout.on('data', (d) => (log += d));
     child.stderr.on('data', (d) => (log += d));
     const timer = setTimeout(() => {
@@ -173,11 +207,11 @@ export async function runBrowserVerification({ repoRoot, runId, browser = 'chrom
   const { tests, stats } = summarizeResults(join(outputDir, 'results.json'));
   const videos = walk(join(outputDir, 'test-results')).filter((f) => f.endsWith('.webm'));
   const traces = walk(join(outputDir, 'test-results')).filter((f) => f.endsWith('.zip'));
-  const status = tests.length === 0 ? 'unverified' : tests.some((t) => t.status === 'failed') ? 'failed' : 'passed';
+  const { status, reason } = runStatus({ code, tests, clean: dirty === '' });
   const record = {
     run_id: runId,
     status,
-    reason: tests.length === 0 ? `no test results (exit ${code}); see run.log` : null,
+    reason,
     revision,
     worktree_clean: dirty === '',
     executor: { os: ready.os, browser, browser_version: ready.checks[0]?.browser_version, playwright: ready.playwright, headless, harness: detectSession().harness, mode: detectSession().mode },

@@ -3,7 +3,8 @@
 // repository), and a result index is posted on the PR. Nothing here embeds a
 // token, a local path or an expiring link.
 import { execFileSync } from 'node:child_process';
-import { join } from 'node:path';
+import { lstatSync, realpathSync, writeFileSync } from 'node:fs';
+import { extname, join, relative } from 'node:path';
 
 export const RELEASE_TAG = 'stroppers-evidence';
 
@@ -48,7 +49,41 @@ function evidenceRelease(repo) {
   }
 }
 
+const UPLOADABLE = new Set(['.webm', '.zip', '.json', '.png']);
+
+// Only regular files of evidence types inside the run directory are uploaded;
+// a crafted record cannot point the upload at a token or another local file.
+export function checkArtifact(runDir, file) {
+  const full = join(runDir, file);
+  const st = lstatSync(full);
+  if (st.isSymbolicLink() || !st.isFile()) throw new Error(`${file}: not a regular file`);
+  const rel = relative(realpathSync(runDir), realpathSync(full));
+  if (rel.startsWith('..') || rel.startsWith('/')) throw new Error(`${file}: outside the run directory`);
+  if (!UPLOADABLE.has(extname(full))) throw new Error(`${file}: not an evidence file type`);
+  return full;
+}
+
+// The published results file is generated here from the run record, without
+// local paths or raw logs, and checked before anything leaves the machine.
+export function publishableSummary(record) {
+  const summary = {
+    run_id: record.run_id,
+    status: record.status,
+    reason: record.reason,
+    revision: record.revision,
+    executor: record.executor,
+    started_at: record.started_at,
+    finished_at: record.finished_at,
+    tests: (record.tests || []).map((t) => ({ title: t.title, status: t.status, error: t.error })),
+  };
+  const text = JSON.stringify(summary, null, 2);
+  const problems = checkPublishable(text);
+  if (problems.length) throw new Error(`run summary is not publishable: ${problems.join('; ')}`);
+  return text;
+}
+
 export function uploadAssets({ repo, runDir, files, runId }) {
+  files.forEach((f) => checkArtifact(runDir, f));
   const release = evidenceRelease(repo);
   const uploaded = [];
   for (const f of files) {

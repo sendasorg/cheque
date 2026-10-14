@@ -4,7 +4,7 @@
 // uninstall never removes shared documents (constraints, glossary, ADRs,
 // verification skills) even if a Stroppers workflow helped create them.
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, readdirSync, rmdirSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync, readdirSync, rmdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 export const PACKAGE_VERSION = JSON.parse(readFileSync(new URL('../.claude-plugin/plugin.json', import.meta.url), 'utf8')).version;
@@ -37,9 +37,23 @@ function plan({ cloudEntry, version, ref }) {
   return items;
 }
 
+// Every path Stroppers can ever manage. The manifest lives in the repository,
+// so its entries are checked against this list before anything is touched.
+const MANAGEABLE = new Map(plan({ cloudEntry: true, version: '0', ref: null }).map((i) => [i.path, i.kind]));
+
 function readManifest(repo) {
   const p = join(repo, MANIFEST);
-  return existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')) : { version: null, items: [] };
+  if (!existsSync(p)) return { version: null, items: [] };
+  const m = JSON.parse(readFileSync(p, 'utf8'));
+  for (const item of m.items || []) {
+    if (MANAGEABLE.get(item.path) !== item.kind) throw new Error(`${MANIFEST} lists ${item.path} (${item.kind}), which Stroppers never manages; refusing to act on it`);
+    try {
+      if (lstatSync(join(repo, item.path)).isSymbolicLink()) throw new Error(`${item.path} is a symlink; refusing to act on it`);
+    } catch (e) {
+      if (e.code !== 'ENOENT') throw e;
+    }
+  }
+  return m;
 }
 
 function writeManifest(repo, m) {

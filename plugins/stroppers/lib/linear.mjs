@@ -1,8 +1,7 @@
-// Read-only Linear access for approval verification and checkpoint recovery.
-// Uses one credential named by config (`linear.credential_env`); a read-only
-// key is recommended so this path can never author an approval. Agent writes
-// (contract, checkpoint, evidence comments) go through the harness's Linear
-// connector, which Linear attributes to an integration.
+// Linear access. Reads (approval verification, checkpoint recovery) use the
+// read-only key named by `linear.credential_env`. Writes (contract, checkpoint,
+// evidence, status) use the Stroppers OAuth app further below, never a
+// connector or a personal key, so no agent write can pass as an owner's.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from 'node:fs';
 import { join } from 'node:path';
@@ -133,13 +132,14 @@ export async function checkAgent(config, env, stateDir, owners = [], fetchImpl) 
 
 // Creates a comment, or updates the agent's own earlier comment that starts
 // with the same marker (checkpoint and evidence comments are kept in place).
-export async function upsertComment(config, env, stateDir, issueKey, body, { marker = null, fetchImpl } = {}) {
+export async function upsertComment(config, env, stateDir, issueKey, body, { marker = null, repository = null, fetchImpl } = {}) {
   const { token, agent_id } = await checkAgent(config, env, stateDir, (config.authority?.owners || []).map((o) => o.linear_user_id), fetchImpl);
   const auth = `Bearer ${token}`;
   const found = await gql(auth, `query($id: String!) { issue(id: $id) { id team { key } comments(first: 250) { nodes { id body user { id } } } } }`, { id: issueKey }, fetchImpl);
   if (!found.issue) throw new LinearError(`issue ${issueKey} not found in the bound workspace`);
   if (config.linear.team && found.issue.team.key !== config.linear.team) throw new LinearError(`issue ${issueKey} is not in the bound team ${config.linear.team}`);
-  const mine = marker && found.issue.comments.nodes.find((c) => c.user?.id === agent_id && c.body.startsWith(marker));
+  // Each repository keeps its own checkpoint comment on a shared issue.
+  const mine = marker && found.issue.comments.nodes.find((c) => c.user?.id === agent_id && c.body.startsWith(marker) && (!repository || c.body.includes(`"repository": "${repository}"`)));
   if (mine) {
     const r = await gql(auth, 'mutation($id: String!, $body: String!) { commentUpdate(id: $id, input: { body: $body }) { success comment { id url } } }', { id: mine.id, body }, fetchImpl);
     return { action: 'updated', ...r.commentUpdate.comment };
@@ -152,8 +152,20 @@ export async function setIssueState(config, env, stateDir, issueKey, stateName, 
   const { token } = await checkAgent(config, env, stateDir, (config.authority?.owners || []).map((o) => o.linear_user_id), fetchImpl);
   const auth = `Bearer ${token}`;
   const found = await gql(auth, `query($id: String!) { issue(id: $id) { id team { key states { nodes { id name type } } } } }`, { id: issueKey }, fetchImpl);
+  if (!found.issue) throw new LinearError(`issue ${issueKey} not found in the bound workspace`);
+  if (config.linear.team && found.issue.team.key !== config.linear.team) throw new LinearError(`issue ${issueKey} is not in the bound team ${config.linear.team}`);
   const state = found.issue?.team.states.nodes.find((s) => s.name.toLowerCase() === stateName.toLowerCase());
   if (!state) throw new LinearError(`team ${found.issue?.team.key} has no status named "${stateName}" (available: ${found.issue?.team.states.nodes.map((s) => s.name).join(', ')})`);
   await gql(auth, 'mutation($id: String!, $stateId: String!) { issueUpdate(id: $id, input: { stateId: $stateId }) { success } }', { id: found.issue.id, stateId: state.id }, fetchImpl);
   return { state: state.name, type: state.type };
+}
+
+// The authoritative checkpoint for this repository: the latest checkpoint
+// comment written by the Stroppers app itself (not by a person or another
+// integration) whose task names this repository.
+export async function latestCheckpointComment(config, env, stateDir, issueKey, repository, fetchImpl) {
+  const { agent_id } = await checkAgent(config, env, stateDir, (config.authority?.owners || []).map((o) => o.linear_user_id), fetchImpl);
+  const { comments } = await fetchIssue(config, issueKey, env, fetchImpl);
+  const mine = comments.filter((c) => c.user?.id === agent_id && c.body.startsWith('<!-- stroppers:checkpoint v1 -->') && c.body.includes(`"repository": "${repository}"`));
+  return mine.at(-1) || null;
 }

@@ -78,6 +78,16 @@ test('owner revocation and issue cancellation stop delivery', () => {
   assert.equal(verifyApproval({ issue: { ...issue, state_type: 'canceled' }, comments: comments.slice(0, 2), owners: [OWNER] }).status, 'revoked');
 });
 
+test('an owner scope extension approves the widened revision now posted', () => {
+  const posted = agentContract();
+  const ext = ownerSays(`stroppers extend ${REV}`);
+  const r = verifyApproval({ issue, comments: [posted, ext], owners: [OWNER] });
+  assert.equal(r.status, 'approved');
+  assert.deepEqual(r.extensions, [ext.id]);
+  const forged = ownerSays(`stroppers extend ${REV}`, { user: { id: 'agent-app' } });
+  assert.equal(verifyApproval({ issue, comments: [agentContract(), forged], owners: [OWNER] }).status, 'pending');
+});
+
 test('the most recent owner approval is the one reported', () => {
   const posted = agentContract();
   const first = ownerSays(`stroppers approve ${REV}`);
@@ -103,9 +113,14 @@ test('applying the same approval event twice is idempotent and revocation is not
 test('delivery actions outside the approved repositories or environments need an extension', () => {
   const cp = newCheckpoint({ binding: { workspace: 'ws-1', team: 'ENG' }, issue, repository: 'acme/shop', runId: 'r1', harness: 'codex', mode: 'cloud', contract });
   const latest = verifyApproval({ issue, comments: [agentContract(), ownerSays(`stroppers approve ${REV}`)], owners: [OWNER] });
-  assert.equal(authorizeAction(cp, latest, { action: 'deploy', repository: 'acme/shop', environment: 'preview' }).ok, true);
-  assert.match(authorizeAction(cp, latest, { action: 'deploy', environment: 'production' }).reason, /scope extension/);
-  assert.match(authorizeAction(cp, latest, { action: 'merge', repository: 'acme/other' }).reason, /outside the approved repositories/);
+  const authority = { repositories: ['acme/shop'], environments: ['preview'] };
+  assert.equal(authorizeAction(cp, latest, { action: 'deploy', environment: 'preview', authority }).ok, true);
+  assert.equal(authorizeAction(cp, latest, { action: 'merge', repository: 'acme/shop', authority }).ok, true);
+  assert.match(authorizeAction(cp, latest, { action: 'deploy', environment: 'production', authority }).reason, /scope extension/);
+  assert.match(authorizeAction(cp, latest, { action: 'merge', repository: 'acme/other', authority }).reason, /outside the approved repositories/);
+  assert.match(authorizeAction(cp, latest, { action: 'deploy', authority }).reason, /needs --environment/);
+  assert.match(authorizeAction(cp, latest, { action: 'delete-prod-db', authority }).reason, /unknown action/);
+  assert.match(authorizeAction(cp, latest, { action: 'deploy', environment: 'preview', authority: { environments: [] } }).reason, /operator's authority/);
 });
 
 test('checkpoint survives render/parse and keeps counters across a harness switch', () => {
@@ -148,10 +163,37 @@ test('a changed head makes earlier pre-merge outcomes stale so they cannot count
   recordOutcome(cp, 'AC1', { status: 'passed', revision: 'aaa' });
   assert.equal(acceptanceSummary(cp, { phase: 'pre-merge' }).ok, true);
   setHead(cp, 'bbb');
-  assert.deepEqual(acceptanceSummary(cp, { phase: 'pre-merge' }).missing, ['AC1']);
+  assert.deepEqual(acceptanceSummary(cp, { phase: 'pre-merge' }).stale, ['AC1']);
   assert.throws(() => recordOutcome(cp, 'AC1', { status: 'unverified', revision: 'bbb' }), /needs a reason/);
   recordOutcome(cp, 'AC1', { status: 'unverified', reason: 'browser unavailable', revision: 'bbb' });
   assert.deepEqual(acceptanceSummary(cp, { phase: 'pre-merge' }).unverified, ['AC1']);
+});
+
+test('completion requires every approved criterion: unplanned, old-revision and unexcused not-applicable results fail', () => {
+  const two = { ...contract, acceptance_criteria: [{ id: 'AC1', criterion: 'a' }, { id: 'AC2', criterion: 'b' }] };
+  const cp = newCheckpoint({ binding: { workspace: 'w', team: 't' }, issue, repository: 'a/b', runId: 'r', harness: 'codex', mode: 'local', contract: two });
+  setHead(cp, 'aaa');
+  cp.verification_plan = [{ criterion_id: 'AC1', stage: 'pre-merge', method: 'm' }];
+  recordOutcome(cp, 'AC1', { status: 'passed', revision: 'aaa' });
+  assert.deepEqual(acceptanceSummary(cp, { phase: 'delivery' }).unplanned, ['AC2']);
+  cp.verification_plan.push({ criterion_id: 'AC2', stage: 'pre-merge', method: 'm' });
+  recordOutcome(cp, 'AC2', { status: 'passed', revision: 'zzz' });
+  assert.deepEqual(acceptanceSummary(cp, { phase: 'delivery' }).stale, ['AC2']);
+  recordOutcome(cp, 'AC2', { status: 'not-applicable', reason: 'agent decided', revision: 'aaa' });
+  assert.deepEqual(acceptanceSummary(cp, { phase: 'delivery' }).not_applicable_without_exception, ['AC2']);
+  cp.contract.snapshot.exceptions = [{ criterion: 'AC2', status: 'not-applicable', reason: 'owner approved' }];
+  assert.equal(acceptanceSummary(cp, { phase: 'delivery' }).ok, true);
+  assert.equal(acceptanceSummary({ ...cp, verification_plan: [] }, { phase: 'delivery' }).ok, false, 'an empty plan never passes');
+});
+
+test('a restored checkpoint whose snapshot was edited is rejected', async () => {
+  const { validateRestored } = await import('../plugins/stroppers/lib/checkpoint.mjs');
+  const cp = newCheckpoint({ binding: { workspace: 'w', team: 't' }, issue, repository: 'a/b', runId: 'r', harness: 'codex', mode: 'local', contract });
+  assert.deepEqual(validateRestored(parse(render(cp)), { repository: 'a/b' }), []);
+  const tampered = parse(render(cp));
+  tampered.contract.snapshot.environments = ['production'];
+  assert.ok(validateRestored(tampered).some((e) => /does not match/.test(e)));
+  assert.ok(validateRestored(parse(render(cp)), { repository: 'a/other' }).some((e) => /belongs to/.test(e)));
 });
 
 test('a second session is refused while another holds the lease', () => {

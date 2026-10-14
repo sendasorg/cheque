@@ -11,11 +11,11 @@ import { ADAPTERS, adapterFor, reviewerEnv } from '../lib/adapters.mjs';
 import { runReview } from '../lib/review.mjs';
 import * as cp from '../lib/checkpoint.mjs';
 import { verifyApproval, applyApproval, authorizeAction } from '../lib/approval.mjs';
-import { fetchIssue, checkBinding, credentialRisk, upsertComment, setIssueState, checkAgent } from '../lib/linear.mjs';
+import { fetchIssue, checkBinding, credentialRisk, upsertComment, setIssueState, checkAgent, latestCheckpointComment } from '../lib/linear.mjs';
 import { triggersFor } from '../lib/triggers.mjs';
 import { runFloorGuard } from '../lib/floor.mjs';
-import { doctor, prepare, runBrowserVerification } from '../lib/playwright.mjs';
-import { uploadAssets, renderIndex, checkPublishable, repoSlug, postComment } from '../lib/evidence.mjs';
+import { doctor, prepare, runBrowserVerification, cleanupAbandoned } from '../lib/playwright.mjs';
+import { uploadAssets, renderIndex, checkPublishable, repoSlug, postComment, publishableSummary } from '../lib/evidence.mjs';
 import { install, uninstall, installStatus, PACKAGE_VERSION } from '../lib/install.mjs';
 import { writeModelMap } from '../lib/models.mjs';
 import { detectSession } from '../lib/session.mjs';
@@ -30,6 +30,7 @@ const USAGE = `stroppers ${PACKAGE_VERSION}
   contract validate|hash|render --file <contract.json>
   checkpoint init --issue <KEY> --contract <file> --harness <id> [--mode local|cloud]
   checkpoint show|render|summary [--phase pre-merge|delivery]
+  checkpoint claim [--issue <KEY>]         restore from Linear, take and publish the lease (continuation)
   checkpoint restore --file <comment.md|->
   checkpoint stage <stage> [--reason <text>]
   checkpoint head <sha> | plan --file <plan.json> | implementer <harness>
@@ -45,8 +46,8 @@ const USAGE = `stroppers ${PACKAGE_VERSION}
   approval authorize <action> [--repository owner/name] [--environment <env>]
   review select [--implementer <harness>] [--available a,b]
   review run --base <ref> --head <ref> [--reviewer <harness>] [--implementer <harness>]
-  browser doctor|prepare|run [--grep <pattern>]
-  evidence publish --run <run-id> --pr <number> [--environment <text>]
+  browser doctor|prepare|run|cleanup [--grep <pattern>]
+  evidence publish --run <run-id> --pr <number> [--environment <text>] [--include-traces]
   install|update [--cloud-entry] [--ref <git ref>] | uninstall | install-status   (in the target repository)
 
 Options: --repo <path> (default: git toplevel of cwd), --json`;
@@ -62,7 +63,7 @@ const { values: opt, positionals: pos } = parseArgs({
     status: { type: 'string' }, revision: { type: 'string' }, evidence: { type: 'string', multiple: true }, note: { type: 'string' },
     result: { type: 'string' }, disposition: { type: 'string' }, phase: { type: 'string' }, reviewer: { type: 'string' }, implementer: { type: 'string' },
     available: { type: 'string' }, repository: { type: 'string' }, environment: { type: 'string' }, grep: { type: 'string' }, run: { type: 'string' },
-    pr: { type: 'string' }, 'cloud-entry': { type: 'boolean' }, ref: { type: 'string' }, stage: { type: 'string' }, help: { type: 'boolean' },
+    pr: { type: 'string' }, 'include-traces': { type: 'boolean' }, 'cloud-entry': { type: 'boolean' }, ref: { type: 'string' }, stage: { type: 'string' }, help: { type: 'boolean' },
   },
 });
 
@@ -197,7 +198,7 @@ const commands = {
     fail('contract validate|hash|render', 2);
   },
 
-  checkpoint() {
+  async checkpoint() {
     const sub = pos[1];
     const { effective } = sub === 'restore' || sub === 'show' || sub === 'render' ? { effective: null } : config();
     if (sub === 'init') {
@@ -212,12 +213,37 @@ const commands = {
       if (existing && existing.task.issue_key !== opt.issue) fail(`an active checkpoint for ${existing.task.issue_key} exists; checkpoint it before starting another task in this checkout`);
       const repository = repoSlug(repoRoot());
       const c = cp.newCheckpoint({ binding: effective.linear, issue: { id: null, key: opt.issue }, repository, runId: `run-${Date.now().toString(36)}`, harness: opt.harness, mode: sessionMode(), contract });
+      cp.acquireLease(c, detectSession().session || `session-${process.pid}-${Date.now().toString(36)}`);
       saveCheckpoint(c);
       return out(c, `checkpoint created for ${opt.issue} (${c.contract.revision}). Post the contract with \`contract render\` and the checkpoint with \`checkpoint render\`.`);
+    }
+    if (sub === 'claim') {
+      // Continuation: the authoritative checkpoint is the agent app's own
+      // comment for this repository. Take the lease, publish it, then re-read
+      // to detect a competing session that claimed in between.
+      const issueKey = opt.issue || loadCheckpoint(false)?.task?.issue_key;
+      if (!issueKey) fail('checkpoint claim needs --issue', 2);
+      const repository = repoSlug(repoRoot());
+      const comment = await latestCheckpointComment(effective, process.env, stateDir(), issueKey, repository);
+      if (!comment) fail(`no Stroppers checkpoint for ${repository} on ${issueKey}`);
+      const c = cp.parse(comment.body);
+      const problems = cp.validateRestored(c, { repository });
+      if (problems.length) fail(`checkpoint on ${issueKey} is not usable: ${problems.join('; ')}`);
+      const holder = detectSession().session || `session-${process.pid}-${Date.now().toString(36)}`;
+      const lease = cp.acquireLease(c, holder);
+      if (!lease.ok) fail(lease.reason);
+      saveCheckpoint(c);
+      await upsertComment(effective, process.env, stateDir(), issueKey, cp.render(c), { marker: cp.MARKER, repository });
+      const again = cp.parse((await latestCheckpointComment(effective, process.env, stateDir(), issueKey, repository)).body);
+      if (again.execution.lease?.holder !== holder) fail(`another session (${again.execution.lease?.holder}) claimed ${issueKey} at the same time; stop and let it continue`);
+      const pending = cp.pendingActions(c);
+      return out({ claimed: cp.taskKey(c), holder, stage: c.stage, blocked_reason: c.blocked_reason, pending_actions: pending }, `claimed ${cp.taskKey(c)} at stage ${c.stage} as ${holder}${c.blocked_reason ? `\nprevious blocked reason (re-check it, do not inherit it): ${c.blocked_reason}` : ''}${pending.length ? `\nreconcile before retrying: ${pending.map((a) => a.id).join(', ')}` : ''}`);
     }
     if (sub === 'restore') {
       const c = cp.parse(readInput(opt.file || '-').trim());
       if (!c) fail('input is not a Stroppers checkpoint comment');
+      const problems = cp.validateRestored(c, { repository: repoSlug(repoRoot()) });
+      if (problems.length) fail(`checkpoint is not usable: ${problems.join('; ')}`);
       saveCheckpoint(c);
       const pending = cp.pendingActions(c);
       return out({ restored: cp.taskKey(c), stage: c.stage, pending_actions: pending }, `restored ${cp.taskKey(c)} at stage ${c.stage}${pending.length ? `\nreconcile before retrying: ${pending.map((a) => a.id).join(', ')}` : ''}`);
@@ -273,7 +299,7 @@ const commands = {
       if (problems.length) fail(`refusing to post: ${problems.join('; ')}`);
       // The contract comment is never edited after posting: an edit would make
       // any approval of it stale, so a changed contract is a new comment.
-      const r = await upsertComment(effective, process.env, stateDir(), issue, body, { marker: kind === 'checkpoint' ? markers.checkpoint : null });
+      const r = await upsertComment(effective, process.env, stateDir(), issue, body, { marker: kind === 'checkpoint' ? markers.checkpoint : null, repository: c?.task?.repository || repoSlug(repoRoot()) });
       return out(r, `${r.action} ${kind} comment on ${issue}: ${r.url}`);
     }
     if (pos[1] === 'show') {
@@ -308,7 +334,7 @@ const commands = {
       return;
     }
     if (pos[1] === 'authorize') {
-      const r = authorizeAction(c, result, { action: pos[2], repository: opt.repository, environment: opt.environment });
+      const r = authorizeAction(c, result, { action: pos[2], repository: opt.repository, environment: opt.environment, authority: effective.authority || {} });
       out(r, r.ok ? `authorized: ${pos[2]}` : `NOT AUTHORIZED: ${r.reason}`);
       if (!r.ok) process.exitCode = 1;
       return;
@@ -323,7 +349,9 @@ const commands = {
     const available = opt.available
       ? opt.available.split(',')
       : Object.keys(effective.adapters).filter((id) => effective.adapters[id].enabled !== false && adapterFor(effective, id).authCheck(reviewerEnv()).ok);
-    const selection = opt.reviewer ? { harness: opt.reviewer, reason: 'explicit --reviewer' } : selectReviewer({ config: effective, implementer, available });
+    // An explicit --reviewer goes through the same policy as a configured one.
+    const reviewConfig = opt.reviewer ? { ...effective, harness: { ...effective.harness, review: { ...effective.harness.review, reviewer: opt.reviewer } } } : effective;
+    const selection = selectReviewer({ config: reviewConfig, implementer, available });
     if (pos[1] === 'select') return out({ implementer, ...selection });
     if (pos[1] !== 'run') fail('review select|run', 2);
     if (selection.blocked) {
@@ -341,7 +369,7 @@ const commands = {
     if (c && r.status !== 'refused') {
       c.reviews.push({ review_id: r.review_id, reviewer: r.reviewer, head: r.head, status: r.status, reason: r.reason || null, verdict: r.verdict || null, record_path: r.record_path });
       for (const f of r.findings || []) c.findings.push(f);
-      if (['exhausted', 'auth-failed', 'timeout', 'unavailable'].includes(r.status)) {
+      if (['exhausted', 'auth-failed', 'timeout', 'unavailable', 'incomplete', 'refused', 'error'].includes(r.status)) {
         const fb = r.status === 'exhausted' && fallbackAllowed(effective, 'review');
         cp.setStage(c, 'blocked', `review by ${selection.harness}: ${r.status}${fb ? ' (fallback enabled for review; rerun with an explicit --reviewer)' : '; waiting (fallback not enabled)'}`);
       }
@@ -355,6 +383,7 @@ const commands = {
     const { effective } = config();
     const v = effective.verification;
     if (pos[1] === 'doctor') return out(doctor(repoRoot(), { browser: v.browser }));
+    if (pos[1] === 'cleanup') return out({ cleaned: cleanupAbandoned(join(repoRoot(), '.stroppers', 'artifacts')) });
     if (pos[1] === 'prepare') {
       const r = prepare(repoRoot(), { browser: v.browser });
       out(r);
@@ -377,7 +406,14 @@ const commands = {
     const record = JSON.parse(readFileSync(join(runDir, 'record.json'), 'utf8'));
     const c = loadCheckpoint(false);
     const repo = repoSlug(repoRoot());
-    const files = [...record.videos, ...(record.status === 'failed' ? record.traces : []), 'results.json'];
+    // Videos and a sanitized summary are published. Raw Playwright reports and
+    // traces stay in the run directory: they can hold local paths, headers or
+    // tokens. Publish a trace deliberately with --include-traces after checking it.
+    writeFileSync(join(runDir, 'summary.json'), publishableSummary(record));
+    const files = [...record.videos, 'summary.json', ...(opt['include-traces'] ? record.traces : [])];
+    const body0 = renderIndex({ record, criteria: [], assets: [], environment: opt.environment });
+    const pre = checkPublishable(body0);
+    if (pre.length) fail(`refusing to publish: ${pre.join('; ')}`);
     const assets = uploadAssets({ repo, runDir, files, runId: opt.run });
     const unresolved = assets.filter((a) => !a.url);
     if (unresolved.length) fail(`uploaded assets without a resolvable URL: ${unresolved.map((a) => a.name).join(', ')}; nothing was posted`);

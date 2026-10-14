@@ -125,21 +125,45 @@ export function recordOutcome(cp, criterionId, { status, reason = null, revision
   return cp;
 }
 
-// Readiness and completion are computed, never asserted: an unverified or
-// stale required criterion cannot be reported as passing.
+// Readiness and completion are computed, never asserted. Every approved
+// acceptance criterion must have a plan entry and a passing outcome bound to
+// the current revision (the head before merge, the deployed artifact after
+// deployment when there is one). A criterion may be not-applicable only with
+// an owner-approved contract exception naming it.
 export function acceptanceSummary(cp, { phase }) {
-  const relevant = cp.verification_plan.filter((p) => (phase === 'pre-merge' ? p.stage === 'pre-merge' : true));
+  const criteria = cp.contract.snapshot.acceptance_criteria.map((a) => a.id);
+  const exempt = new Set((cp.contract.snapshot.exceptions || []).filter((e) => e && e.criterion && e.status === 'not-applicable').map((e) => e.criterion));
+  const unplanned = criteria.filter((id) => !cp.verification_plan.some((p) => p.criterion_id === id));
+  const relevant = cp.verification_plan.filter((p) => criteria.includes(p.criterion_id) && (phase === 'pre-merge' ? p.stage === 'pre-merge' : true));
   const missing = [];
   const failed = [];
   const unverified = [];
+  const stale = [];
+  const unexcused = [];
   for (const p of relevant) {
     const o = cp.outcomes[p.criterion_id];
-    if (!o || o.stale) missing.push(p.criterion_id);
+    const expected = p.stage === 'post-deploy' && cp.revision.deployed_artifact ? cp.revision.deployed_artifact : cp.revision.head;
+    if (!o) missing.push(p.criterion_id);
+    else if (o.stale || (expected && o.revision !== expected)) stale.push(p.criterion_id);
     else if (o.status === 'failed') failed.push(p.criterion_id);
     else if (o.status === 'unverified') unverified.push(p.criterion_id);
+    else if (o.status === 'not-applicable' && !exempt.has(p.criterion_id)) unexcused.push(p.criterion_id);
   }
-  const ok = !missing.length && !failed.length && !unverified.length;
-  return { phase, ok, missing, failed, unverified };
+  const ok = !unplanned.length && !missing.length && !stale.length && !failed.length && !unverified.length && !unexcused.length;
+  return { phase, ok, unplanned, missing, stale, failed, unverified, not_applicable_without_exception: unexcused };
+}
+
+// A checkpoint restored from an issue comment is accepted only if it is
+// well formed and its contract snapshot hashes to its recorded revision, so an
+// edited copy cannot smuggle in an unapproved contract.
+export function validateRestored(cp, { repository } = {}) {
+  const errors = [];
+  if (cp?.schema !== SCHEMA) errors.push('not a v1 checkpoint');
+  if (!cp?.contract?.snapshot || contractHash(cp.contract.snapshot) !== cp.contract.revision) errors.push('contract snapshot does not match its recorded revision');
+  if (cp?.approval?.contract_revision && cp.approval.contract_revision !== cp.contract.revision) errors.push('approval is recorded for a different contract revision');
+  if (repository && cp?.task?.repository !== repository) errors.push(`checkpoint belongs to ${cp?.task?.repository}, not ${repository}`);
+  for (const k of ['task', 'revision', 'execution', 'outcomes', 'counters', 'actions']) if (!cp?.[k] || typeof cp[k] !== 'object') errors.push(`missing ${k}`);
+  return errors;
 }
 
 // External actions are journaled before they run and completed with the

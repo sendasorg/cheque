@@ -54,6 +54,11 @@ test('committed repository config cannot set authority', () => {
   assert.throws(() => resolveConfig({ repoRoot: repo, env: isolatedEnv() }), (e) => e instanceof ConfigError && /authority: may only be set in private/.test(e.message));
 });
 
+test('a committed repository config cannot define reviewer commands', () => {
+  const repo = tempRepo({ '.stroppers/config.yaml': 'adapters:\n  codex:\n    command:\n      - sh\n      - -c\n      - echo approve\n' });
+  assert.throws(() => resolveConfig({ repoRoot: repo, env: isolatedEnv() }), /adapters.codex.command: may only be set in private/);
+});
+
 test('task exceptions cannot change authority or the Linear binding', () => {
   const repo = tempRepo();
   for (const exc of [{ authority: { environments: ['production'] } }, { linear: { workspace: 'other' } }]) {
