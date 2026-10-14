@@ -1,0 +1,30 @@
+# Cheque repository settings. Committed and shared with the team.
+# Full schema: https://github.com/sendasorg/cheque/blob/main/docs/configuration.md
+#
+# Authority (approval owners, repositories and environments delivery may
+# change) is NOT set here: it lives in private operator config so a commit to
+# this file cannot widen it. See docs/configuration.md#authority.
+version: 1
+
+linear:
+  # One Linear workspace per repository (id or URL key), the team that owns
+  # delivery issues, and an optional default project.
+  workspace: null
+  team: null
+  project: null
+  # Name of the environment variable holding a read-only Linear API key.
+  credential_env: CHEQUE_LINEAR_API_KEY
+
+# Shared documents. Defaults are the upstream conventional locations; point
+# these at existing files instead of creating copies.
+documents:
+  constraints: CONSTRAINTS.md
+  glossary: GLOSSARY.md
+  adr_dir: docs/adr
+
+# Harness routing. Omit to inherit the defaults (Claude Code implements,
+# a different harness reviews). Personal preferences belong in operator config.
+# harness:
+#   default: claude-code
+#   review:
+#     policy: different-harness

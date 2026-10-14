@@ -1,10 +1,10 @@
 {
-  "name": "stroppers",
-  "interface": { "displayName": "Stroppers" },
+  "name": "cheque",
+  "interface": { "displayName": "Cheque" },
   "plugins": [
     {
-      "name": "stroppers",
-      "source": { "source": "local", "path": "./plugins/stroppers" },
+      "name": "cheque",
+      "source": { "source": "local", "path": "./plugins/cheque" },
       "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
       "category": "Developer Tools"
     }

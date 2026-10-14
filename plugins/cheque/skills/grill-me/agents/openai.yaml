@@ -1,0 +1,5 @@
+interface:
+  display_name: "Grill Me"
+  short_description: "Upstream grill-me, bundled by Cheque"
+policy:
+  allow_implicit_invocation: false

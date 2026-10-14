@@ -1,4 +1,0 @@
-# Stroppers runtime state, run artifacts and private overrides
-.stroppers/state/
-.stroppers/artifacts/
-.stroppers/config.local.yaml

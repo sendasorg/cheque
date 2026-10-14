@@ -2,9 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { chmodSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { selectReviewer, harnessForStep, fallbackAllowed } from '../plugins/stroppers/lib/harness.mjs';
-import { runReview, reviewCurrent, validateFindings } from '../plugins/stroppers/lib/review.mjs';
-import { reviewerEnv, classifyFailure } from '../plugins/stroppers/lib/adapters.mjs';
+import { selectReviewer, harnessForStep, fallbackAllowed } from '../plugins/cheque/lib/harness.mjs';
+import { runReview, reviewCurrent, validateFindings } from '../plugins/cheque/lib/review.mjs';
+import { reviewerEnv, classifyFailure } from '../plugins/cheque/lib/adapters.mjs';
 import { git, tempDir, tempRepo, write } from './helpers.mjs';
 
 const base = (over = {}) => ({
@@ -58,9 +58,9 @@ test('subscription fallback is opt-in globally or per step', () => {
 });
 
 test('reviewer environment is an allowlist: no API-billing keys or other credentials reach it', () => {
-  const env = reviewerEnv({ ANTHROPIC_API_KEY: 'x', OPENAI_API_KEY: 'y', CODEX_API_KEY: 'z', ANTHROPIC_AUTH_TOKEN: 'w', GH_TOKEN: 'g', STROPPERS_LINEAR_API_KEY: 'l', AWS_SECRET_ACCESS_KEY: 'a', PATH: '/bin', HOME: '/h', CLAUDE_CODE_OAUTH_TOKEN: 'sub' });
-  assert.deepEqual(Object.keys(env).sort(), ['CLAUDE_CODE_OAUTH_TOKEN', 'HOME', 'PATH', 'STROPPERS_ROLE']);
-  assert.equal(env.STROPPERS_ROLE, 'reviewer');
+  const env = reviewerEnv({ ANTHROPIC_API_KEY: 'x', OPENAI_API_KEY: 'y', CODEX_API_KEY: 'z', ANTHROPIC_AUTH_TOKEN: 'w', GH_TOKEN: 'g', CHEQUE_LINEAR_API_KEY: 'l', AWS_SECRET_ACCESS_KEY: 'a', PATH: '/bin', HOME: '/h', CLAUDE_CODE_OAUTH_TOKEN: 'sub' });
+  assert.deepEqual(Object.keys(env).sort(), ['CHEQUE_ROLE', 'CLAUDE_CODE_OAUTH_TOKEN', 'HOME', 'PATH']);
+  assert.equal(env.CHEQUE_ROLE, 'reviewer');
 });
 
 test('failure text is classified as exhaustion, auth failure or error', () => {
@@ -96,14 +96,14 @@ async function review(script, over = {}) {
   const bin = tempDir();
   const cmd = fakeReviewer(bin, 'third', script);
   const config = base({ adapters: { third: { enabled: true, command: [cmd], fake: true } } });
-  const result = await runReview({ repoRoot: repo, config, reviewer: 'third', implementer: 'claude-code', base: baseSha, head: headSha, contract: { outcome: 'a is 2', acceptance_criteria: ['a equals 2'] }, stateDir: join(repo, '.stroppers', 'state'), env: { PATH: process.env.PATH, ...over.env }, timeoutMs: over.timeoutMs });
+  const result = await runReview({ repoRoot: repo, config, reviewer: 'third', implementer: 'claude-code', base: baseSha, head: headSha, contract: { outcome: 'a is 2', acceptance_criteria: ['a equals 2'] }, stateDir: join(repo, '.cheque', 'state'), env: { PATH: process.env.PATH, ...over.env }, timeoutMs: over.timeoutMs });
   return { result, repo, headSha };
 }
 
 const finding = '{"severity":"medium","title":"t","body":"b","file":"a.js","line_start":1,"line_end":1,"confidence":0.8,"recommendation":"r","scenario":"s","evidence":"e"}';
 
 test('findings from a reviewer are recorded with head identity and raw output', async () => {
-  const { result, headSha } = await review(`pwd > "$STROPPERS_REVIEW_OUTPUT.cwd"; cp .stroppers-review.diff "$STROPPERS_REVIEW_OUTPUT.diff"; cat > /dev/null; echo '{"verdict":"needs-attention","summary":"s","findings":[${finding}],"next_steps":[]}' > "$STROPPERS_REVIEW_OUTPUT"`);
+  const { result, headSha } = await review(`pwd > "$CHEQUE_REVIEW_OUTPUT.cwd"; cp .cheque-review.diff "$CHEQUE_REVIEW_OUTPUT.diff"; cat > /dev/null; echo '{"verdict":"needs-attention","summary":"s","findings":[${finding}],"next_steps":[]}' > "$CHEQUE_REVIEW_OUTPUT"`);
   assert.equal(result.status, 'findings');
   assert.equal(result.head, headSha);
   assert.equal(result.findings[0].disposition, null);
@@ -124,12 +124,12 @@ test('quota exhaustion and auth failure are distinguished', async () => {
 });
 
 test('a delegated reviewer cannot start another review', async () => {
-  const { result } = await review('exit 0', { env: { STROPPERS_ROLE: 'reviewer' } });
+  const { result } = await review('exit 0', { env: { CHEQUE_ROLE: 'reviewer' } });
   assert.equal(result.status, 'refused');
 });
 
 test('a needs-attention verdict with no findings is incomplete, not clean', async () => {
-  const { result } = await review(`cat > /dev/null; echo '{"verdict":"needs-attention","summary":"could not finish","findings":[],"next_steps":[]}' > "$STROPPERS_REVIEW_OUTPUT"`);
+  const { result } = await review(`cat > /dev/null; echo '{"verdict":"needs-attention","summary":"could not finish","findings":[],"next_steps":[]}' > "$CHEQUE_REVIEW_OUTPUT"`);
   assert.equal(result.status, 'incomplete');
 });
 
@@ -145,18 +145,18 @@ test('a committed symlink at the diff path cannot redirect the diff write', asyn
   w(victim, 'keep me');
   const repo = tempRepo({ 'a.js': '1\n' });
   const baseSha = git(repo, 'rev-parse', 'HEAD');
-  symlinkSync(victim, join(repo, '.stroppers-review.diff'));
+  symlinkSync(victim, join(repo, '.cheque-review.diff'));
   git(repo, 'add', '-A');
   git(repo, 'commit', '-qm', 'symlink');
   const headSha = git(repo, 'rev-parse', 'HEAD');
   const bin = tempDir();
-  const cmd = fakeReviewer(bin, 'third', `cat > /dev/null; echo '{"verdict":"approve","summary":"ok","findings":[],"next_steps":[]}' > "$STROPPERS_REVIEW_OUTPUT"`);
+  const cmd = fakeReviewer(bin, 'third', `cat > /dev/null; echo '{"verdict":"approve","summary":"ok","findings":[],"next_steps":[]}' > "$CHEQUE_REVIEW_OUTPUT"`);
   await runReview({ repoRoot: repo, config: base({ adapters: { third: { enabled: true, command: [cmd], fake: true } } }), reviewer: 'third', implementer: 'claude-code', base: baseSha, head: headSha, contract: {}, stateDir: join(repo, '.s'), env: { PATH: process.env.PATH } });
   assert.equal(readFileSync(victim, 'utf8'), 'keep me');
 });
 
 test('a review is current only for the head it reviewed', async () => {
-  const { result, headSha } = await review(`cat > /dev/null; echo '{"verdict":"approve","summary":"ok","findings":[],"next_steps":[]}' > "$STROPPERS_REVIEW_OUTPUT"`);
+  const { result, headSha } = await review(`cat > /dev/null; echo '{"verdict":"approve","summary":"ok","findings":[],"next_steps":[]}' > "$CHEQUE_REVIEW_OUTPUT"`);
   assert.equal(result.status, 'clean');
   assert.equal(reviewCurrent(result, headSha), true);
   assert.equal(reviewCurrent(result, 'f'.repeat(40)), false);

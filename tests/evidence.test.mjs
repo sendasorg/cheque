@@ -2,9 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { checkPublishable, checkArtifact, publishableSummary, assetName, renderIndex } from '../plugins/stroppers/lib/evidence.mjs';
-import { runStatus, treeChanges } from '../plugins/stroppers/lib/playwright.mjs';
-import { install, uninstall } from '../plugins/stroppers/lib/install.mjs';
+import { checkPublishable, checkArtifact, publishableSummary, assetName, renderIndex } from '../plugins/cheque/lib/evidence.mjs';
+import { runStatus, treeChanges } from '../plugins/cheque/lib/playwright.mjs';
+import { install, uninstall } from '../plugins/cheque/lib/install.mjs';
 import { tempDir, tempRepo, write } from './helpers.mjs';
 
 test('publication refuses tokens, signed URLs and local paths', () => {
@@ -55,10 +55,10 @@ test('a browser run passes only with a clean exit, a passing test, no failures a
   assert.equal(runStatus({ code: 1, tests: [{ status: 'failed' }], clean: true }).status, 'failed');
 });
 
-test('uninstall refuses a manifest that names files Stroppers never manages', () => {
+test('uninstall refuses a manifest that names files Cheque never manages', () => {
   const repo = tempRepo({ 'README.md': 'keep\n' });
   install(repo);
-  write(repo, '.stroppers/managed.json', JSON.stringify({ version: '0', items: [{ path: '../other/README.md', kind: 'file', sha256: 'x' }, { path: 'README.md', kind: 'block' }] }));
+  write(repo, '.cheque/managed.json', JSON.stringify({ version: '0', items: [{ path: '../other/README.md', kind: 'file', sha256: 'x' }, { path: 'README.md', kind: 'block' }] }));
   assert.throws(() => uninstall(repo), /never manages/);
 });
 
@@ -69,8 +69,8 @@ test('install and uninstall refuse a symlinked parent of a managed path', async 
   const repo = tempRepo();
   install(repo, { cloudEntry: true });
   const { rmSync } = await import('node:fs');
-  rmSync(join(repo, '.agents/skills/stroppers'), { recursive: true });
-  symlinkSync(outside, join(repo, '.agents/skills/stroppers'));
+  rmSync(join(repo, '.agents/skills/cheque'), { recursive: true });
+  symlinkSync(outside, join(repo, '.agents/skills/cheque'));
   assert.throws(() => uninstall(repo), /symlink/);
   assert.equal(r(join(outside, 'SKILL.md'), 'utf8'), 'external');
 });
@@ -85,7 +85,7 @@ test('untracked files make the tree unclean even when git hides them from status
 });
 
 test('cleanup marks interrupted runs unverified and never signals a non-Playwright process', async () => {
-  const { cleanupAbandoned } = await import('../plugins/stroppers/lib/playwright.mjs');
+  const { cleanupAbandoned } = await import('../plugins/cheque/lib/playwright.mjs');
   const { readFileSync: r } = await import('node:fs');
   const root = tempDir();
   write(root, 'run-a/running.json', JSON.stringify({ pgid: process.pid }));

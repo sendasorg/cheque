@@ -2,7 +2,7 @@
 
 ## Delivery contract
 
-Posted on the issue as a comment that starts with `<!-- stroppers:contract v1 -->`
+Posted on the issue as a comment that starts with `<!-- cheque:contract v1 -->`
 and carries the contract as JSON. Its revision is the SHA-256 of the
 canonical JSON (keys sorted), so any change produces a new revision.
 
@@ -22,28 +22,28 @@ Unknown fields are rejected.
 
 ## Approval
 
-An approval is an issue comment `stroppers approve sha256:<revision>`:
+An approval is an issue comment `cheque approve sha256:<revision>`:
 
 - written after the contract comment;
 - by a configured owner (Linear user id);
 - directly by that person: not by an integration (`botActor`) and not on someone's behalf (`onBehalfOf`);
 - never edited.
 
-`stroppers revoke` (by an owner, after the approval) or cancelling the issue
-revokes it. `stroppers extend sha256:<revision>` approves a widened revision.
+`cheque revoke` (by an owner, after the approval) or cancelling the issue
+revokes it. `cheque extend sha256:<revision>` approves a widened revision.
 The comment id is the approval event id, so repeated verification is
 idempotent.
 
 ## Checkpoint
 
 The authoritative copy is the issue comment that starts with
-`<!-- stroppers:checkpoint v1 -->`, updated in place by the agent app. The
-copy in `.stroppers/state/current.json` is a cache restored from it
-(`stroppers checkpoint restore`).
+`<!-- cheque:checkpoint v1 -->`, updated in place by the agent app. The
+copy in `.cheque/state/current.json` is a cache restored from it
+(`cheque checkpoint restore`).
 
 | Field | Content |
 | --- | --- |
-| `schema` | `stroppers.checkpoint/v1`; other versions are refused until migrated |
+| `schema` | `cheque.checkpoint/v1`; other versions are refused until migrated |
 | `task` | `workspace_id`, `team`, `issue_id`, `issue_key`, `repository` (task identity is workspace + issue + repository) |
 | `run_id` | Run identity |
 | `contract` | `revision` and the immutable `snapshot` |

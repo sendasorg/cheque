@@ -1,5 +1,5 @@
 {
-  "name": "stroppers",
+  "name": "cheque",
   "private": true,
   "type": "module",
   "engines": { "node": ">=20" },
@@ -7,6 +7,6 @@
     "test": "node --test tests/*.test.mjs",
     "vendor:check": "node scripts/vendor.mjs check",
     "vendor:sync": "node scripts/vendor.mjs sync",
-    "validate": "claude plugin validate . && claude plugin validate plugins/stroppers"
+    "validate": "claude plugin validate . && claude plugin validate plugins/cheque"
   }
 }

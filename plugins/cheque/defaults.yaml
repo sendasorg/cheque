@@ -1,0 +1,40 @@
+# Packaged defaults. Operator, repository and repo-local config override
+# these; see docs/configuration.md for the full schema and precedence.
+version: 1
+harness:
+  default: claude-code
+  review:
+    policy: different-harness
+    preferences:
+      - claude-code
+      - codex
+    timeout_minutes: 30
+  fallback:
+    enabled: false
+adapters:
+  claude-code:
+    enabled: true
+  codex:
+    enabled: true
+recovery:
+  fix_cycles: 3
+  infra_retries: 4
+  infra_backoff_seconds:
+    - 30
+    - 120
+    - 300
+    - 900
+verification:
+  browser: chromium
+  headless: true
+  max_run_minutes: 20
+  evidence_publication: github-release
+documents:
+  constraints: CONSTRAINTS.md
+  glossary: GLOSSARY.md
+  adr_dir: docs/adr
+  planning_dir: .cheque/docs/plans
+linear:
+  credential_env: CHEQUE_LINEAR_API_KEY
+  agent_client_id_env: CHEQUE_LINEAR_AGENT_CLIENT_ID
+  agent_client_secret_env: CHEQUE_LINEAR_AGENT_CLIENT_SECRET

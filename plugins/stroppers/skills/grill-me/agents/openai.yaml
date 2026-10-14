@@ -1,5 +1,0 @@
-interface:
-  display_name: "Grill Me"
-  short_description: "Upstream grill-me, bundled by Stroppers"
-policy:
-  allow_implicit_invocation: false
