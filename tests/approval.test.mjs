@@ -173,3 +173,9 @@ test('fetchIssue refuses a credential that authenticates to a different workspac
   const issueData = { id: 'i', identifier: 'OPS-1', team: { key: 'OPS' }, state: { type: 'started', name: 'In Progress' }, comments: { nodes: [] } };
   await assert.rejects(fetchIssue(config, 'OPS-1', { K: 'x' }, fakeLinear({ id: 'o1', urlKey: 'acme' }, issueData)), /not the bound team ENG/);
 });
+
+test('a verification key that authenticates as an approval owner is flagged', async () => {
+  const { credentialRisk } = await import('../plugins/stroppers/lib/linear.mjs');
+  assert.match(credentialRisk({ viewer_id: OWNER }, [OWNER]), /must be a read-only key/);
+  assert.equal(credentialRisk({ viewer_id: 'service-account' }, [OWNER]), null);
+});

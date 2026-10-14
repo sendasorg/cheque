@@ -3,8 +3,6 @@
 // repository), and a result index is posted on the PR. Nothing here embeds a
 // token, a local path or an expiring link.
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 export const RELEASE_TAG = 'stroppers-evidence';
@@ -23,33 +21,46 @@ function gh(args, opts = {}) {
   return execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...opts }).trim();
 }
 
+// REST only: Claude Code cloud sessions reject GitHub GraphQL, which several
+// `gh` porcelain commands use.
+function api(path, args = []) {
+  return JSON.parse(gh(['api', path, ...args]) || 'null');
+}
+
+// owner/name of the repository's GitHub origin, read from git so it works
+// offline and without GraphQL.
+export function repoSlug(repoRoot) {
+  const url = execFileSync('git', ['remote', 'get-url', 'origin'], { cwd: repoRoot, encoding: 'utf8' }).trim();
+  const m = url.match(/github\.com[:/]([^/]+\/[^/]+?)(\.git)?$/);
+  if (!m) throw new Error(`origin ${url} is not a GitHub repository`);
+  return m[1];
+}
+
 export function assetName(runId, file) {
   return `${runId}--${file.split('/').map((p) => p.replace(/[^A-Za-z0-9._-]/g, '_')).join('--')}`.slice(0, 200);
 }
 
-export function uploadAssets({ repo, runDir, files, runId }) {
+function evidenceRelease(repo) {
   try {
-    gh(['release', 'view', RELEASE_TAG, '--repo', repo, '--json', 'tagName']);
+    return api(`repos/${repo}/releases/tags/${RELEASE_TAG}`);
   } catch {
-    gh(['release', 'create', RELEASE_TAG, '--repo', repo, '--prerelease', '--title', 'Stroppers verification evidence', '--notes', 'Videos, traces and results attached by Stroppers verification runs. Each asset name starts with its run id; the PR result index links to them.']);
+    return api(`repos/${repo}/releases`, ['-X', 'POST', '-f', `tag_name=${RELEASE_TAG}`, '-f', 'name=Stroppers verification evidence', '-F', 'prerelease=true', '-f', 'body=Videos, traces and results attached by Stroppers verification runs. Each asset name starts with its run id; the PR result index links to them.']);
   }
-  // GitHub names an asset after the uploaded file, so each file is staged under
-  // its unique run-scoped name first; runs never overwrite each other.
-  const staging = mkdtempSync(join(tmpdir(), 'stroppers-evidence-'));
+}
+
+export function uploadAssets({ repo, runDir, files, runId }) {
+  const release = evidenceRelease(repo);
   const uploaded = [];
-  try {
-    for (const f of files) {
-      const name = assetName(runId, f);
-      copyFileSync(join(runDir, f), join(staging, name));
-      gh(['release', 'upload', RELEASE_TAG, join(staging, name), '--repo', repo]);
-      uploaded.push({ file: f, name });
-    }
-  } finally {
-    rmSync(staging, { recursive: true, force: true });
+  for (const f of files) {
+    const name = assetName(runId, f);
+    const asset = api(`https://uploads.github.com/repos/${repo}/releases/${release.id}/assets?name=${encodeURIComponent(name)}`, ['-X', 'POST', '-H', 'Content-Type: application/octet-stream', '--input', join(runDir, f)]);
+    uploaded.push({ file: f, name, url: asset?.browser_download_url || null });
   }
-  // The download URL is read back from GitHub rather than constructed.
-  const assets = JSON.parse(gh(['release', 'view', RELEASE_TAG, '--repo', repo, '--json', 'assets'])).assets;
-  return uploaded.map((u) => ({ ...u, url: assets.find((a) => a.name === u.name)?.url || null }));
+  return uploaded;
+}
+
+export function postComment(repo, pr, bodyFile) {
+  return api(`repos/${repo}/issues/${pr}/comments`, ['-X', 'POST', '-F', `body=@${bodyFile}`]).html_url;
 }
 
 const ICON = { passed: 'passed', failed: 'FAILED', 'not-applicable': 'not applicable', unverified: 'UNVERIFIED' };

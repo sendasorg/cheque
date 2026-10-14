@@ -35,7 +35,17 @@ export async function checkBinding(config, env, fetchImpl) {
   const want = config.linear.workspace;
   if (data.organization.id !== want && data.organization.urlKey !== want)
     throw new LinearError(`credential authenticates to workspace ${data.organization.urlKey}, but this repository is bound to ${want}`);
-  return { workspace_id: data.organization.id, workspace_key: data.organization.urlKey };
+  return { workspace_id: data.organization.id, workspace_key: data.organization.urlKey, viewer_id: data.viewer.id };
+}
+
+// A verification key that authenticates as an approval owner could also be
+// used to write an approval as that owner, with no integration attribution.
+// Linear does not expose a key's scopes, so this cannot be checked; it is
+// reported so the operator can confirm the key is read-only.
+export function credentialRisk(binding, owners) {
+  if (owners.includes(binding.viewer_id))
+    return 'the Linear verification key authenticates as an approval owner; it must be a read-only key, or Stroppers cannot tell an agent-written approval from the owner\'s own';
+  return null;
 }
 
 const ISSUE = `query($id: String!) {

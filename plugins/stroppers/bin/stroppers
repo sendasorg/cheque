@@ -11,11 +11,11 @@ import { ADAPTERS, adapterFor, reviewerEnv } from '../lib/adapters.mjs';
 import { runReview } from '../lib/review.mjs';
 import * as cp from '../lib/checkpoint.mjs';
 import { verifyApproval, applyApproval, authorizeAction } from '../lib/approval.mjs';
-import { fetchIssue, checkBinding } from '../lib/linear.mjs';
+import { fetchIssue, checkBinding, credentialRisk } from '../lib/linear.mjs';
 import { triggersFor } from '../lib/triggers.mjs';
 import { runFloorGuard } from '../lib/floor.mjs';
 import { doctor, prepare, runBrowserVerification } from '../lib/playwright.mjs';
-import { uploadAssets, renderIndex, checkPublishable } from '../lib/evidence.mjs';
+import { uploadAssets, renderIndex, checkPublishable, repoSlug, postComment } from '../lib/evidence.mjs';
 import { install, uninstall, installStatus, PACKAGE_VERSION } from '../lib/install.mjs';
 import { writeModelMap } from '../lib/models.mjs';
 import { detectSession } from '../lib/session.mjs';
@@ -135,7 +135,7 @@ const commands = {
     fail('config validate|explain', 2);
   },
 
-  doctor() {
+  async doctor() {
     const { effective } = config();
     const report = { repository: repoRoot(), mode: sessionMode(), blockers: deliveryBlockers(effective), harnesses: {} };
     for (const id of Object.keys(effective.adapters)) {
@@ -143,6 +143,16 @@ const commands = {
       const a = adapterFor(effective, id);
       report.harnesses[id] = { auth: a.authCheck(reviewerEnv()), declares: a.declares };
     }
+    if (!report.blockers.some((b) => b.startsWith('linear.')) && process.env[effective.linear.credential_env]) {
+      try {
+        const binding = await checkBinding(effective, process.env);
+        report.linear = { workspace: binding.workspace_key, ok: true };
+        const risk = credentialRisk(binding, (effective.authority?.owners || []).map((o) => o.linear_user_id));
+        if (risk) report.warnings = [risk];
+      } catch (e) {
+        report.blockers.push(`linear: ${e.message}`);
+      }
+    } else if (!report.blockers.some((b) => b.startsWith('linear.'))) report.blockers.push(`linear: ${effective.linear.credential_env} is not set in this session`);
     report.implement = harnessForStep(effective, 'implement');
     report.reviewer = selectReviewer({ config: effective, implementer: report.implement, available: Object.entries(report.harnesses).filter(([, h]) => h.auth.ok).map(([id]) => id) });
     out(report);
@@ -190,7 +200,7 @@ const commands = {
       if (errors.length) fail(`contract is invalid:\n  ${errors.join('\n  ')}`);
       const existing = loadCheckpoint(false);
       if (existing && existing.task.issue_key !== opt.issue) fail(`an active checkpoint for ${existing.task.issue_key} exists; checkpoint it before starting another task in this checkout`);
-      const repository = execFileSync('gh', ['repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner'], { cwd: repoRoot(), encoding: 'utf8' }).trim();
+      const repository = repoSlug(repoRoot());
       const c = cp.newCheckpoint({ binding: effective.linear, issue: { id: null, key: opt.issue }, repository, runId: `run-${Date.now().toString(36)}`, harness: opt.harness, mode: sessionMode(), contract });
       saveCheckpoint(c);
       return out(c, `checkpoint created for ${opt.issue} (${c.contract.revision}). Post the contract with \`contract render\` and the checkpoint with \`checkpoint render\`.`);
@@ -319,7 +329,7 @@ const commands = {
     const runDir = join(repoRoot(), '.stroppers', 'artifacts', opt.run);
     const record = JSON.parse(readFileSync(join(runDir, 'record.json'), 'utf8'));
     const c = loadCheckpoint(false);
-    const repo = execFileSync('gh', ['repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner'], { cwd: repoRoot(), encoding: 'utf8' }).trim();
+    const repo = repoSlug(repoRoot());
     const files = [...record.videos, ...(record.status === 'failed' ? record.traces : []), 'results.json'];
     const assets = uploadAssets({ repo, runDir, files, runId: opt.run });
     const unresolved = assets.filter((a) => !a.url);
@@ -330,7 +340,7 @@ const commands = {
     if (problems.length) fail(`refusing to publish: ${problems.join('; ')}`);
     const bodyFile = join(runDir, 'index.md');
     writeFileSync(bodyFile, body);
-    const url = execFileSync('gh', ['pr', 'comment', opt.pr, '--repo', repo, '--body-file', bodyFile], { encoding: 'utf8' }).trim();
+    const url = postComment(repo, opt.pr, bodyFile);
     if (c) {
       c.evidence.push({ kind: 'browser-run', run_id: opt.run, revision: record.revision, status: record.status, index_url: url, assets: assets.map((a) => a.url) });
       saveCheckpoint(c);
