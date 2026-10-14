@@ -306,8 +306,12 @@ test enforces it.
 
 ## License and attribution
 
-MIT. Bundled components keep their own licenses. See
+MIT. 
+
+Bundled components keep their own licenses. See
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the pinned sources in
-[dependencies.json](dependencies.json): Pstack (MIT, Lauren Tan), agent-skills
-(MIT, Addy Osmani), skills (MIT, Matt Pocock), codex-plugin-cc review schema
-(Apache-2.0, OpenAI).
+[dependencies.json](dependencies.json): 
+- Pstack (MIT, Lauren Tan)
+- agent-skills (MIT, Addy Osmani)
+- skills (MIT, Matt Pocock)
+- codex-plugin-cc review schema (Apache-2.0, OpenAI).
