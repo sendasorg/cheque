@@ -11,7 +11,7 @@ import { ADAPTERS, adapterFor, reviewerEnv } from '../lib/adapters.mjs';
 import { runReview } from '../lib/review.mjs';
 import * as cp from '../lib/checkpoint.mjs';
 import { verifyApproval, applyApproval, authorizeAction } from '../lib/approval.mjs';
-import { fetchIssue, checkBinding, credentialRisk } from '../lib/linear.mjs';
+import { fetchIssue, checkBinding, credentialRisk, upsertComment, setIssueState, checkAgent } from '../lib/linear.mjs';
 import { triggersFor } from '../lib/triggers.mjs';
 import { runFloorGuard } from '../lib/floor.mjs';
 import { doctor, prepare, runBrowserVerification } from '../lib/playwright.mjs';
@@ -38,6 +38,9 @@ const USAGE = `stroppers ${PACKAGE_VERSION}
   checkpoint intend <kind> <key> | complete <action-id> --result <json>
   checkpoint finding <finding-id> --disposition accepted|dismissed --reason <text>
   checkpoint lease <holder>
+  linear show [--issue <KEY>]                read the issue and its comments (read-only key)
+  linear post contract|checkpoint|evidence [--file <md>] [--issue <KEY>]   write as the Stroppers agent app
+  linear status <status name> [--issue <KEY>]
   approval verify [--issue <KEY>]           read approval from the bound Linear workspace
   approval authorize <action> [--repository owner/name] [--environment <env>]
   review select [--implementer <harness>] [--available a,b]
@@ -149,6 +152,8 @@ const commands = {
         report.linear = { workspace: binding.workspace_key, ok: true };
         const risk = credentialRisk(binding, (effective.authority?.owners || []).map((o) => o.linear_user_id));
         if (risk) report.warnings = [risk];
+        const agent = await checkAgent(effective, process.env, stateDir(), (effective.authority?.owners || []).map((o) => o.linear_user_id));
+        report.linear.agent = { ok: true, app_user: agent.agent_id };
       } catch (e) {
         report.blockers.push(`linear: ${e.message}`);
       }
@@ -246,6 +251,37 @@ const commands = {
     out(c, `checkpoint updated: stage ${c.stage}${c.blocked_reason ? ` (blocked: ${c.blocked_reason})` : ''}`);
   },
 
+  async linear() {
+    const { effective } = config();
+    const c = loadCheckpoint(false);
+    const issue = opt.issue || c?.task?.issue_key;
+    if (!issue) fail('no issue: pass --issue or run inside an active checkpoint', 2);
+    if (pos[1] === 'post') {
+      const kind = pos[2];
+      const markers = { contract: cp.CONTRACT_MARKER, checkpoint: cp.MARKER, evidence: null };
+      if (!(kind in markers)) fail('linear post contract|checkpoint|evidence', 2);
+      let body;
+      if (kind === 'contract') body = cp.renderContract(c.contract.snapshot);
+      else if (kind === 'checkpoint') body = cp.render(c);
+      else body = readInput(opt.file || '-');
+      const problems = checkPublishable(body);
+      if (problems.length) fail(`refusing to post: ${problems.join('; ')}`);
+      // The contract comment is never edited after posting: an edit would make
+      // any approval of it stale, so a changed contract is a new comment.
+      const r = await upsertComment(effective, process.env, stateDir(), issue, body, { marker: kind === 'checkpoint' ? markers.checkpoint : null });
+      return out(r, `${r.action} ${kind} comment on ${issue}: ${r.url}`);
+    }
+    if (pos[1] === 'show') {
+      const { issue: i, comments } = await fetchIssue(effective, issue, process.env);
+      return out({ ...i, comments: comments.map((x) => ({ id: x.id, at: x.createdAt, author: x.botActor ? `integration:${x.botActor.name}` : x.user?.id, body: x.body })) });
+    }
+    if (pos[1] === 'status') {
+      const r = await setIssueState(effective, process.env, stateDir(), issue, pos.slice(2).join(' '));
+      return out(r, `${issue} is now ${r.state}`);
+    }
+    fail('linear post|status', 2);
+  },
+
   async approval() {
     const { effective } = config();
     const c = loadCheckpoint();
@@ -275,7 +311,9 @@ const commands = {
     const { effective } = config();
     const c = loadCheckpoint(false);
     const implementer = opt.implementer || c?.execution?.implementer || detectSession().harness || harnessForStep(effective, 'implement');
-    const available = opt.available ? opt.available.split(',') : undefined;
+    const available = opt.available
+      ? opt.available.split(',')
+      : Object.keys(effective.adapters).filter((id) => effective.adapters[id].enabled !== false && adapterFor(effective, id).authCheck(reviewerEnv()).ok);
     const selection = opt.reviewer ? { harness: opt.reviewer, reason: 'explicit --reviewer' } : selectReviewer({ config: effective, implementer, available });
     if (pos[1] === 'select') return out({ implementer, ...selection });
     if (pos[1] !== 'run') fail('review select|run', 2);
@@ -294,7 +332,7 @@ const commands = {
     if (c && r.status !== 'refused') {
       c.reviews.push({ review_id: r.review_id, reviewer: r.reviewer, head: r.head, status: r.status, reason: r.reason || null, verdict: r.verdict || null, record_path: r.record_path });
       for (const f of r.findings || []) c.findings.push(f);
-      if (['exhausted', 'auth-failed', 'timeout'].includes(r.status)) {
+      if (['exhausted', 'auth-failed', 'timeout', 'unavailable'].includes(r.status)) {
         const fb = r.status === 'exhausted' && fallbackAllowed(effective, 'review');
         cp.setStage(c, 'blocked', `review by ${selection.harness}: ${r.status}${fb ? ' (fallback enabled for review; rerun with an explicit --reviewer)' : '; waiting (fallback not enabled)'}`);
       }

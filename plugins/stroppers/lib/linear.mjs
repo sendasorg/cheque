@@ -4,6 +4,9 @@
 // (contract, checkpoint, evidence comments) go through the harness's Linear
 // connector, which Linear attributes to an integration.
 
+import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from 'node:fs';
+import { join } from 'node:path';
+
 const ENDPOINT = 'https://api.linear.app/graphql';
 
 export class LinearError extends Error {}
@@ -50,9 +53,10 @@ export function credentialRisk(binding, owners) {
 
 const ISSUE = `query($id: String!) {
   issue(id: $id) {
-    id identifier
+    id identifier title description url
     team { key }
     state { type name }
+    project { name }
     comments(first: 250, orderBy: createdAt) {
       nodes { id body createdAt editedAt user { id } botActor { id name type } onBehalfOf { id } }
     }
@@ -67,7 +71,74 @@ export async function fetchIssue(config, issueKey, env, fetchImpl) {
     throw new LinearError(`issue ${issueKey} belongs to team ${data.issue.team.key}, not the bound team ${config.linear.team}`);
   const comments = [...data.issue.comments.nodes].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
   return {
-    issue: { id: data.issue.id, key: data.issue.identifier, workspace_id: binding.workspace_id, state_type: data.issue.state.type, state: data.issue.state.name },
+    issue: { id: data.issue.id, key: data.issue.identifier, title: data.issue.title, description: data.issue.description, url: data.issue.url, project: data.issue.project?.name || null, workspace_id: binding.workspace_id, state_type: data.issue.state.type, state: data.issue.state.name },
     comments,
   };
+}
+
+// Agent writes. Stroppers writes to Linear only as its own OAuth application
+// (client credentials, actor=app), so every agent-written comment is
+// attributed to the app and can never pass as an owner's approval. The token
+// is minted on demand, cached in ignored state and never printed.
+
+const TOKEN_URL = 'https://api.linear.app/oauth/token';
+
+export async function agentToken(config, env, stateDir, fetchImpl = fetch) {
+  const id = env[config.linear?.agent_client_id_env];
+  const secret = env[config.linear?.agent_client_secret_env];
+  if (!id || !secret) throw new LinearError(`${config.linear?.agent_client_id_env} and ${config.linear?.agent_client_secret_env} must be set to write to Linear as the Stroppers agent`);
+  const cache = join(stateDir, 'linear-agent-token.json');
+  if (existsSync(cache)) {
+    const c = JSON.parse(readFileSync(cache, 'utf8'));
+    if (c.client === id && c.expires_at > Date.now() + 3600000) return c.token;
+  }
+  const res = await fetchImpl(TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'client_credentials', client_id: id, client_secret: secret, scope: 'read,write' }).toString(),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || !body.access_token) throw new LinearError(`Linear did not issue an agent token (${res.status} ${body.error || ''}); check the app's client credentials setting`);
+  mkdirSync(stateDir, { recursive: true });
+  writeFileSync(cache, JSON.stringify({ client: id, token: body.access_token, expires_at: Date.now() + (body.expires_in || 0) * 1000 }));
+  chmodSync(cache, 0o600);
+  return body.access_token;
+}
+
+// Confirms the agent token acts in the bound workspace and is not an owner.
+export async function checkAgent(config, env, stateDir, owners = [], fetchImpl) {
+  const token = await agentToken(config, env, stateDir, fetchImpl);
+  const data = await gql(`Bearer ${token}`, '{ viewer { id app } organization { id urlKey } }', {}, fetchImpl);
+  const want = config.linear.workspace;
+  if (data.organization.id !== want && data.organization.urlKey !== want)
+    throw new LinearError(`agent app is installed in workspace ${data.organization.urlKey}, but this repository is bound to ${want}`);
+  if (owners.includes(data.viewer.id) || !data.viewer.app) throw new LinearError('the agent credential acts as a person, not as the Stroppers app; recreate it with actor=app');
+  return { token, agent_id: data.viewer.id };
+}
+
+// Creates a comment, or updates the agent's own earlier comment that starts
+// with the same marker (checkpoint and evidence comments are kept in place).
+export async function upsertComment(config, env, stateDir, issueKey, body, { marker = null, fetchImpl } = {}) {
+  const { token, agent_id } = await checkAgent(config, env, stateDir, (config.authority?.owners || []).map((o) => o.linear_user_id), fetchImpl);
+  const auth = `Bearer ${token}`;
+  const found = await gql(auth, `query($id: String!) { issue(id: $id) { id team { key } comments(first: 250) { nodes { id body user { id } } } } }`, { id: issueKey }, fetchImpl);
+  if (!found.issue) throw new LinearError(`issue ${issueKey} not found in the bound workspace`);
+  if (config.linear.team && found.issue.team.key !== config.linear.team) throw new LinearError(`issue ${issueKey} is not in the bound team ${config.linear.team}`);
+  const mine = marker && found.issue.comments.nodes.find((c) => c.user?.id === agent_id && c.body.startsWith(marker));
+  if (mine) {
+    const r = await gql(auth, 'mutation($id: String!, $body: String!) { commentUpdate(id: $id, input: { body: $body }) { success comment { id url } } }', { id: mine.id, body }, fetchImpl);
+    return { action: 'updated', ...r.commentUpdate.comment };
+  }
+  const r = await gql(auth, 'mutation($issueId: String!, $body: String!) { commentCreate(input: { issueId: $issueId, body: $body }) { success comment { id url } } }', { issueId: found.issue.id, body }, fetchImpl);
+  return { action: 'created', ...r.commentCreate.comment };
+}
+
+export async function setIssueState(config, env, stateDir, issueKey, stateName, fetchImpl) {
+  const { token } = await checkAgent(config, env, stateDir, (config.authority?.owners || []).map((o) => o.linear_user_id), fetchImpl);
+  const auth = `Bearer ${token}`;
+  const found = await gql(auth, `query($id: String!) { issue(id: $id) { id team { key states { nodes { id name type } } } } }`, { id: issueKey }, fetchImpl);
+  const state = found.issue?.team.states.nodes.find((s) => s.name.toLowerCase() === stateName.toLowerCase());
+  if (!state) throw new LinearError(`team ${found.issue?.team.key} has no status named "${stateName}" (available: ${found.issue?.team.states.nodes.map((s) => s.name).join(', ')})`);
+  await gql(auth, 'mutation($id: String!, $stateId: String!) { issueUpdate(id: $id, input: { stateId: $stateId }) { success } }', { id: found.issue.id, stateId: state.id }, fetchImpl);
+  return { state: state.name, type: state.type };
 }

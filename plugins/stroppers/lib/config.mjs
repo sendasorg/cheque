@@ -64,6 +64,8 @@ export const SCHEMA = {
         team: nullableStr,
         project: nullableStr,
         credential_env: { type: 'string', pattern: /^[A-Z][A-Z0-9_]*$/, nullable: true },
+        agent_client_id_env: { type: 'string', pattern: /^[A-Z][A-Z0-9_]*$/, nullable: true },
+        agent_client_secret_env: { type: 'string', pattern: /^[A-Z][A-Z0-9_]*$/, nullable: true },
         approval_state: nullableStr,
       },
     },
@@ -275,6 +277,7 @@ export function deliveryBlockers(c) {
   if (!c.linear?.workspace) blockers.push('linear.workspace is not set: bind this repository to one Linear workspace in .stroppers/config.yaml');
   if (!c.linear?.team) blockers.push('linear.team is not set');
   if (!c.linear?.credential_env) blockers.push('linear.credential_env is not set: name the environment variable that holds a read-only Linear API key');
+  if (!c.linear?.agent_client_id_env || !c.linear?.agent_client_secret_env) blockers.push('linear.agent_client_id_env / agent_client_secret_env are not set: name the variables holding the Stroppers agent OAuth app credentials');
   if (!c.authority?.owners?.length) blockers.push('authority.owners is empty: configure approval owners in private operator config');
   if (!c.authority?.repositories?.length) blockers.push('authority.repositories is empty: list the repositories delivery may change');
   return blockers;
@@ -285,6 +288,7 @@ export function deliveryBlockers(c) {
 // with their values.
 export function explain(resolved, env = process.env) {
   const c = structuredClone(resolved.effective);
-  if (c.linear?.credential_env) c.linear.credential_env = `${c.linear.credential_env} (${env[c.linear.credential_env] ? 'set' : 'not set'})`;
+  for (const k of ['credential_env', 'agent_client_id_env', 'agent_client_secret_env'])
+    if (c.linear?.[k]) c.linear[k] = `${c.linear[k]} (${env[c.linear[k]] ? 'set' : 'not set'})`;
   return { effective: c, layers: resolved.layers };
 }

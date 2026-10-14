@@ -56,7 +56,7 @@ export async function runReview({ repoRoot, config, reviewer, implementer, base,
 
   const auth = adapter.authCheck(childEnv);
   record.reviewer.auth = auth.ok ? auth.mode : null;
-  if (!auth.ok) return finish(outDir, { ...record, status: 'auth-failed', reason: auth.reason, findings: [] });
+  if (!auth.ok) return finish(outDir, { ...record, status: auth.unavailable ? 'unavailable' : 'auth-failed', reason: auth.reason, findings: [] });
 
   // A shared clone of the head commit in a temp directory: the reviewer sees
   // exactly that revision, and nothing is written to the source repository

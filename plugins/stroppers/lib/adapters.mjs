@@ -46,10 +46,13 @@ export const ADAPTERS = {
     authCheck(env) {
       if (env.CLAUDE_CODE_OAUTH_TOKEN) return { ok: true, mode: 'subscription-token' };
       const r = spawnSync('claude', ['auth', 'status'], { env, encoding: 'utf8', timeout: 30000 });
-      if (r.error) return { ok: false, reason: `claude CLI not available: ${r.error.message}` };
+      if (r.error) return { ok: false, unavailable: true, reason: `claude CLI not available: ${r.error.message}` };
       try {
         const s = JSON.parse(r.stdout);
-        if (s.loggedIn && s.authMethod === 'claude.ai') return { ok: true, mode: 'claude.ai subscription' };
+        // claude.ai sign-in locally; cloud sessions and setup-token use an OAuth token.
+        // Both are subscription auth. API keys and third-party providers are not.
+        if (s.loggedIn && ['claude.ai', 'oauth_token'].includes(s.authMethod) && (s.apiProvider ?? 'firstParty') === 'firstParty')
+          return { ok: true, mode: `${s.authMethod} subscription` };
         return { ok: false, reason: `claude is not signed in with a claude.ai subscription (authMethod: ${s.authMethod || 'none'})` };
       } catch {
         return { ok: false, reason: 'could not read `claude auth status`' };
@@ -100,7 +103,7 @@ export const ADAPTERS = {
     },
     authCheck(env) {
       const r = spawnSync('codex', ['login', 'status'], { env, encoding: 'utf8', timeout: 30000 });
-      if (r.error) return { ok: false, reason: `codex CLI not available: ${r.error.message}` };
+      if (r.error) return { ok: false, unavailable: true, reason: `codex CLI not available: ${r.error.message}` };
       const text = `${r.stdout}${r.stderr}`;
       if (/ChatGPT|access token/i.test(text) && r.status === 0) return { ok: true, mode: text.trim() };
       if (/API key/i.test(text)) return { ok: false, reason: 'codex is signed in with an API key; Stroppers only uses subscription sign-in' };

@@ -36,3 +36,5 @@ documents:
   planning_dir: .stroppers/docs/plans
 linear:
   credential_env: STROPPERS_LINEAR_API_KEY
+  agent_client_id_env: STROPPERS_LINEAR_AGENT_CLIENT_ID
+  agent_client_secret_env: STROPPERS_LINEAR_AGENT_CLIENT_SECRET

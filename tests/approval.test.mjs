@@ -179,3 +179,54 @@ test('a verification key that authenticates as an approval owner is flagged', as
   assert.match(credentialRisk({ viewer_id: OWNER }, [OWNER]), /must be a read-only key/);
   assert.equal(credentialRisk({ viewer_id: 'service-account' }, [OWNER]), null);
 });
+
+function fakeLinearApi({ viewer = { id: 'agent-app', app: true }, org = { id: 'o1', urlKey: 'acme' }, comments = [] } = {}) {
+  const calls = [];
+  const fn = async (url, req) => {
+    calls.push({ url, auth: req.headers?.Authorization, body: req.body });
+    if (url.endsWith('/oauth/token')) return { ok: true, status: 200, json: async () => ({ access_token: 'app-token', expires_in: 2592000 }) };
+    const { query, variables } = JSON.parse(req.body);
+    let data;
+    if (query.includes('organization')) data = { viewer, organization: org };
+    else if (query.includes('commentUpdate')) data = { commentUpdate: { success: true, comment: { id: variables.id, url: 'u' } } };
+    else if (query.includes('commentCreate')) data = { commentCreate: { success: true, comment: { id: 'new', url: 'u' } } };
+    else data = { issue: { id: 'i1', team: { key: 'ENG' }, comments: { nodes: comments } } };
+    return { ok: true, status: 200, json: async () => ({ data }) };
+  };
+  return { fn, calls };
+}
+
+test('agent writes use an app token minted from client credentials and cached privately', async () => {
+  const { agentToken } = await import('../plugins/stroppers/lib/linear.mjs');
+  const { tempDir } = await import('./helpers.mjs');
+  const { statSync } = await import('node:fs');
+  const config = { linear: { agent_client_id_env: 'CID', agent_client_secret_env: 'CSEC' } };
+  const dir = tempDir();
+  const api = fakeLinearApi();
+  assert.equal(await agentToken(config, { CID: 'id', CSEC: 's' }, dir, api.fn), 'app-token');
+  assert.equal(await agentToken(config, { CID: 'id', CSEC: 's' }, dir, api.fn), 'app-token');
+  assert.equal(api.calls.filter((c) => c.url.endsWith('/oauth/token')).length, 1, 'second call uses the cache');
+  assert.match(api.calls[0].body, /grant_type=client_credentials/);
+  assert.equal(statSync(`${dir}/linear-agent-token.json`).mode & 0o777, 0o600);
+});
+
+test('an agent credential that acts as a person or an owner is refused', async () => {
+  const { checkAgent } = await import('../plugins/stroppers/lib/linear.mjs');
+  const { tempDir } = await import('./helpers.mjs');
+  const config = { linear: { workspace: 'acme', agent_client_id_env: 'CID', agent_client_secret_env: 'CSEC' } };
+  await assert.rejects(checkAgent(config, { CID: 'id', CSEC: 's' }, tempDir(), [], fakeLinearApi({ viewer: { id: 'u', app: false } }).fn), /acts as a person/);
+  await assert.rejects(checkAgent(config, { CID: 'id', CSEC: 's' }, tempDir(), [], fakeLinearApi({ org: { id: 'o2', urlKey: 'other' } }).fn), /bound to acme/);
+});
+
+test('the checkpoint comment is updated in place; other comments are new', async () => {
+  const { upsertComment } = await import('../plugins/stroppers/lib/linear.mjs');
+  const { tempDir } = await import('./helpers.mjs');
+  const config = { linear: { workspace: 'acme', team: 'ENG', agent_client_id_env: 'CID', agent_client_secret_env: 'CSEC' }, authority: { owners: [{ linear_user_id: OWNER }] } };
+  const comments = [{ id: 'cp1', body: '<!-- stroppers:checkpoint v1 -->\nold', user: { id: 'agent-app' } }, { id: 'h1', body: '<!-- stroppers:checkpoint v1 -->\nforged by a person', user: { id: OWNER } }];
+  const api = fakeLinearApi({ comments });
+  const r = await upsertComment(config, { CID: 'id', CSEC: 's' }, tempDir(), 'ENG-1', '<!-- stroppers:checkpoint v1 -->\nnew', { marker: '<!-- stroppers:checkpoint v1 -->', fetchImpl: api.fn });
+  assert.deepEqual([r.action, r.id], ['updated', 'cp1']);
+  assert.ok(api.calls.every((c) => c.url.endsWith('/oauth/token') || c.auth === 'Bearer app-token'));
+  const created = await upsertComment(config, { CID: 'id', CSEC: 's' }, tempDir(), 'ENG-1', 'evidence', { fetchImpl: api.fn });
+  assert.equal(created.action, 'created');
+});
