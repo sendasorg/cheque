@@ -1,6 +1,6 @@
 {
   "name": "cheque",
-  "version": "0.1.11",
+  "version": "0.2.0",
   "description": "Deliver approved Linear issues through Pstack with cross-harness review, applicable specialist checks, in-session browser evidence and portable checkpoints.",
   "author": { "name": "sogamoso" },
   "homepage": "https://github.com/sendasorg/cheque",
