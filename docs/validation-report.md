@@ -2,7 +2,7 @@
 
 Pilot date: 2026-10-14. Implementation harness: Claude Code 2.1.287 (Opus 5.5).
 Machine: macOS 27, Node 26. Pilot repository: a private, disposable fixture
-(`cheque-pilot`: a Node price calculator with unit tests, a Playwright
+(`stroppers-pilot`: a Node price calculator with unit tests, a Playwright
 journey and GitHub Actions CI). Linear: the operator's personal workspace,
 team `PRE`. Production use of `cheque` is a separate rollout step recorded at
 the end.
@@ -40,7 +40,7 @@ exercise behavior, not prompt text:
 | 4 | Plugin load, Codex, fresh isolated `CODEX_HOME` | verified: same namespaced skills; helper runs from the plugin cache |
 | 5 | Playwright on a fresh machine state | verified: `browser prepare` installed Chromium automatically; run passed with video |
 | 6 | Everyday Chrome isolation | verified: same Chrome process, identical tab ids and URLs before and after a run, no leftover automation processes |
-| 7 | PR evidence publication | verified: video and results uploaded as `cheque-evidence` release assets with run-scoped names; index comment bound to the tested commit; anonymous access 404 on the private repo, authenticated download returns WebM |
+| 7 | PR evidence publication | verified: video and results uploaded as `stroppers-evidence` release assets with run-scoped names; index comment bound to the tested commit; anonymous access 404 on the private repo, authenticated download returns WebM |
 | 8 | Linear binding to the wrong workspace | verified: rejected with the workspace names |
 | 9 | Agent self-approval | verified: an approval line posted by the `cheque` agent app was rejected |
 | 10 | Owner approval and scope | verified: owner comment accepted for the exact revision; `merge` authorized, `deploy production` refused as outside scope |
