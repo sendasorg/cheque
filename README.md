@@ -252,7 +252,7 @@ path instead of being skipped. Details and current limits:
 claude plugin marketplace update sendas && claude plugin update cheque@sendas --scope project
 node PLUGIN/bin/cheque update             # refreshes managed files it still owns
 
-# roll back: pin the marketplace to an earlier release tag and reinstall
+# roll back: pin the marketplace to an earlier tag, v0.2.0 or later, and reinstall
 claude plugin marketplace remove sendas --scope project
 claude plugin marketplace add sendasorg/cheque#<earlier tag> --scope project
 claude plugin install cheque@sendas --scope project
