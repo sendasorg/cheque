@@ -7,7 +7,7 @@
       "name": "cheque",
       "source": "./plugins/cheque",
       "description": "Deliver approved Linear issues through Pstack with cross-harness review, applicable specialist checks, in-session browser evidence and portable checkpoints.",
-      "version": "0.1.11"
+      "version": "0.2.0"
     }
   ]
 }
