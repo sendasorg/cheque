@@ -54,14 +54,14 @@ Claude Code (project scope, so the team gets the same version):
 ```sh
 cd your-repo
 claude plugin marketplace add sendasorg/cheque#v0.1.11 --scope project
-claude plugin install cheque@cheque --scope project
+claude plugin install cheque@sendas --scope project
 ```
 
 Codex:
 
 ```sh
 codex plugin marketplace add https://github.com/sendasorg/cheque.git
-codex plugin add cheque@cheque
+codex plugin add cheque@sendas
 ```
 
 Both register the namespaced skills `cheque:deliver`, `cheque:grill-with-docs`
@@ -71,8 +71,8 @@ installs and never shadows a version you installed yourself.
 
 Then add the `cheque` files to the repository. The helper lives in the
 plugin; `PLUGIN` below is the installed plugin directory (Claude Code:
-`~/.claude/plugins/cache/cheque/cheque/<version>`; Codex:
-`~/.codex/plugins/cache/cheque/cheque/<version>`), or the
+`~/.claude/plugins/cache/sendas/cheque/<version>`; Codex:
+`~/.codex/plugins/cache/sendas/cheque/<version>`), or the
 `plugins/cheque` directory of a `cheque` checkout:
 
 ```sh
@@ -249,17 +249,17 @@ path instead of being skipped. Details and current limits:
 
 ```sh
 # update: refresh the marketplace, then the plugin (harnesses cache by version)
-claude plugin marketplace update cheque && claude plugin update cheque@cheque --scope project
+claude plugin marketplace update sendas && claude plugin update cheque@sendas --scope project
 node PLUGIN/bin/cheque update             # refreshes managed files it still owns
 
 # roll back: pin the marketplace to an earlier release tag and reinstall
-claude plugin marketplace remove cheque --scope project
+claude plugin marketplace remove sendas --scope project
 claude plugin marketplace add sendasorg/cheque#<earlier tag> --scope project
-claude plugin install cheque@cheque --scope project
+claude plugin install cheque@sendas --scope project
 
 # uninstall from a repository
 node PLUGIN/bin/cheque uninstall
-claude plugin uninstall cheque@cheque --scope project
+claude plugin uninstall cheque@sendas --scope project
 ```
 
 `uninstall` removes only files and blocks `cheque` created and that nobody has

@@ -1,7 +1,7 @@
 {
-  "name": "cheque",
+  "name": "sendas",
   "owner": { "name": "sogamoso" },
-  "description": "cheque: approved-issue delivery through Pstack for Claude Code and Codex.",
+  "description": "Sendas plugins for Claude Code and Codex. cheque: approved-issue delivery through Pstack.",
   "plugins": [
     {
       "name": "cheque",

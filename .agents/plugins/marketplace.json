@@ -1,6 +1,6 @@
 {
-  "name": "cheque",
-  "interface": { "displayName": "cheque" },
+  "name": "sendas",
+  "interface": { "displayName": "Sendas" },
   "plugins": [
     {
       "name": "cheque",
