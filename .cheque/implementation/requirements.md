@@ -516,7 +516,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-137.9 | README: no hosting, limits, native automation, unattended expectations, update/rollback/uninstall, troubleshooting | verified | file: README Unattended, Update, Troubleshooting |
 | R-137.10 | README: attribution and reference links | verified | file: README License and attribution |
 | R-138.1 | README validated on fresh setup/fixture; record exercised paths | unverified | why: README steps exercised piecewise in the pilot (marketplace add/install, helper install, credentials, doctor, first delivery); not replayed top to bottom on a clean machine |
-| R-138.2 | Samples/commands match schema and entry point | verified | run: README install commands executed against tag v0.1.11; helper commands match bin/stroppers usage |
+| R-138.2 | Samples/commands match schema and entry point | in-progress | why: README install commands were executed against tag v0.1.11, when the plugin was stroppers@stroppers; after the rename the README must be re-run against the next release tag, which CI creates when the version bump lands |
 | R-138.3 | Second operator can set up without this conversation; provider UI steps explicit | unverified | why: requires an independent operator dry run |
 | R-139.1 | Public-release-ready repo; upstream licenses/attribution preserved; pins/patches recorded | verified | file: LICENSE (MIT), THIRD_PARTY_NOTICES.md, dependencies.json |
 | R-139.2 | Compatible project license selected; no relicensing | verified | file: MIT compatible with MIT/Apache-2.0 components; no relicensing |
