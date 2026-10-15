@@ -7,6 +7,15 @@ journey and GitHub Actions CI). Linear: the operator's personal workspace,
 team `PRE`. Production use of `cheque` is a separate rollout step recorded at
 the end.
 
+The pilot ran in `sogamoso/stroppers-pilot`. That repository was deleted on
+2026-10-14 and recreated, private, as
+[`sendasorg/stroppers-pilot`](https://github.com/sendasorg/stroppers-pilot)
+from a local clone: its git history, its four branches and the
+`stroppers-evidence` tag are intact. Its pull requests (#3 and #4, with the
+verification comments) and the `stroppers-evidence` release assets (videos
+and results) were lost with the original, so the PR and asset evidence cited
+below can no longer be opened.
+
 Statuses follow the ledger: **verified** means the check ran and passed with
 the evidence named; **blocked** and **unverified** name what is missing.
 

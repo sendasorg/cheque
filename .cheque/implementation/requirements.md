@@ -22,7 +22,7 @@ test, `run:` command and observed result, `doc:` documentation section,
 | R-001.2 | Pstack owns planning, execution, verification, PR feedback, merging | verified | file: skills/deliver/SKILL.md steps 4-7; run: PRE-5 used Pstack independent verifier and Opening a PR (VR run 5) |
 | R-001.3 | Add narrowly scoped quality/production capabilities, no second lifecycle orchestrator | verified | file: references/specialists/*, lib/triggers.mjs; no lifecycle code (docs/architecture.md) |
 | R-002.1 | Complete repo inspection, implementation, validation, reviewable change set | verified | run: release PR #1 squash-merged to main (bec8041) after independent review; tag v0.1.11 |
-| R-002.2 | Pilot in one repository before rollout | verified | run: pilot repo sogamoso/stroppers-pilot (docs/validation-report.md) |
+| R-002.2 | Pilot in one repository before rollout | verified | run: pilot repo sogamoso/stroppers-pilot, now sendasorg/stroppers-pilot (docs/validation-report.md) |
 | R-002.3 | Ask which target repo to use if not supplied, before installing/changing config | verified | why: pilot is a disposable fixture created by this session; operator settled repo questions (decisions.md D-001) |
 | R-003.1 | Agent takes approved task through Pstack, specialists, independent verification, PR feedback, CI, authorized delivery | verified | run: PRE-5 approved, built, reviewed (Codex), verified, PR, CI, merged, recorded in Linear (VR runs 5-6) |
 | R-003.2 | Delivery complete only when deliverable meets approved acceptance, evidence in Linear | verified | run: PRE-5 Done only after acceptanceSummary ok at merge commit; Linear evidence comment |
