@@ -53,7 +53,7 @@ Claude Code (project scope, so the team gets the same version):
 
 ```sh
 cd your-repo
-claude plugin marketplace add sendasorg/cheque#v0.2.0 --scope project
+claude plugin marketplace add sendasorg/cheque#v0.2.1 --scope project
 claude plugin install cheque@sendas --scope project
 ```
 
