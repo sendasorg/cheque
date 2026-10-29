@@ -115,6 +115,14 @@ records marketplaces by name per machine, so adding `sogamoso/stroppers` at a
 new ref also moves other local projects that installed from the same
 marketplace name to that ref.
 
+The rename shipped as v0.2.0, with the plugin published as `cheque@sendas`.
+The README install path was re-run from that tag in a fresh repository for
+Claude Code, including `cheque install` and `cheque doctor` from the plugin
+cache, and from the GitHub URL for Codex in a clean Codex home. On a machine
+that had already added the repository to Codex under its earlier marketplace
+name, `codex plugin marketplace add` reports the URL as already added and
+`codex plugin add cheque@sendas` fails until the old marketplace is removed.
+
 ## Remaining limitations
 
 See the ledger and [capability-matrix.md](capability-matrix.md). In short: Codex
