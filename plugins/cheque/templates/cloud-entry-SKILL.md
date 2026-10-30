@@ -18,17 +18,17 @@ over to its entry point.
    # counts only if it is cheque {{version}}: an attached repository may be on
    # another branch.
    ok() { [ -n "$1" ] && [ -f "$1/plugins/cheque/skills/deliver/SKILL.md" ] && grep -qs '"version": "{{version}}"' "$1/plugins/cheque/.claude-plugin/plugin.json"; }
-   for d in "$CHEQUE_HOME" "$(git rev-parse --show-toplevel)/../cheque" "$HOME/.cache/cheque/v{{version}}"; do
+   for d in "$CHEQUE_HOME" "$(git rev-parse --show-toplevel)/../cheque" "$HOME/.cache/cheque/{{cache}}"; do
      ok "$d" && break
      d=
    done
-   CHEQUE_HOME="${d:-$HOME/.cache/cheque/v{{version}}}"
+   CHEQUE_HOME="${d:-$HOME/.cache/cheque/{{cache}}}"
    ok "$CHEQUE_HOME" || git clone --depth 1 --branch '{{ref}}' {{repo_url}} "$CHEQUE_HOME"
-   ok "$CHEQUE_HOME" || echo "cheque {{version}} is not available at $CHEQUE_HOME"
+   ok "$CHEQUE_HOME" || { echo "cheque {{version}} is not available at $CHEQUE_HOME" >&2; false; }
    ```
 
-   If the clone fails (no network or no access) or the last line reports that
-   cheque {{version}} is not available, stop and report the blocker.
+   If the snippet fails (no network, no access, or no checkout of cheque
+   {{version}}), stop and report the blocker.
    Cloud sessions authenticate GitHub only for the repositories attached to
    the session, so attach {{repo_url}} as an additional repository, or use an
    environment setup script that installs it at `$CHEQUE_HOME`.

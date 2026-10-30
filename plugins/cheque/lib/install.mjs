@@ -24,10 +24,9 @@ function template(name, vars = {}) {
 // `seed`: created once, then owned by the repository (never updated or removed).
 // `block`: a marked section inside a shared file.
 function plan({ cloudEntry, version, ref }) {
-  // The ref is written into the cloud entry's shell commands and can come from
-  // the committed manifest, so only plain git ref characters are accepted.
-  if (ref && (!/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(ref) || ref.includes('..'))) throw new Error(`invalid ref ${JSON.stringify(ref)}: use letters, digits, '.', '_', '/' and '-'`);
-  const vars = { version, ref: ref || `v${version}`, repo_url: 'https://github.com/sendasorg/cheque' };
+  // A custom ref gets its own cache directory, so the default tag and another
+  // ref that declare the same version never reuse each other's checkout.
+  const vars = { version, ref: ref || `v${version}`, cache: ref ? `v${version}-${ref.replace(/[/+]/g, '_')}` : `v${version}`, repo_url: 'https://github.com/sendasorg/cheque' };
   const items = [
     { path: '.cheque/config.yaml', kind: 'seed', content: template('config.yaml') },
     { path: '.cheque/README.md', kind: 'file', content: template('cheque-readme.md', vars) },
@@ -97,14 +96,25 @@ function removeBlock(existing) {
   return before + existing.slice(end + BLOCK_END.length + 1);
 }
 
+// The ref is written into the cloud entry's shell commands and can come from
+// the committed manifest, so only plain git ref characters are accepted. A
+// release tag means "this release", so a tag recorded by an earlier install
+// follows the package version on update instead of pinning the old release.
+function customRef(ref) {
+  if (!ref) return null;
+  if (!/^[A-Za-z0-9][A-Za-z0-9._/+-]*$/.test(ref) || ref.includes('..')) throw new Error(`invalid ref ${JSON.stringify(ref)}: use letters, digits, '.', '_', '/', '+' and '-'`);
+  return /^v\d+\.\d+\.\d+$/.test(ref) ? null : ref;
+}
+
 export function install(repo, { cloudEntry = false, version = PACKAGE_VERSION, ref = null } = {}) {
   const manifest = readManifest(repo);
+  const pin = customRef(ref || manifest.ref);
   const recorded = Object.fromEntries(manifest.items.map((i) => [i.path, i]));
   const report = { created: [], updated: [], unchanged: [], conflicts: [], kept: [] };
   const items = [];
   const wantCloud = cloudEntry || manifest.items.some((i) => i.path.endsWith('skills/cheque/SKILL.md'));
 
-  for (const item of plan({ cloudEntry: wantCloud, version, ref: ref || manifest.ref })) {
+  for (const item of plan({ cloudEntry: wantCloud, version, ref: pin })) {
     assertNoSymlinks(repo, item.path);
     const abs = join(repo, item.path);
     const exists = existsSync(abs);
@@ -152,7 +162,7 @@ export function install(repo, { cloudEntry = false, version = PACKAGE_VERSION, r
       if (prior) items.push(prior);
     }
   }
-  writeManifest(repo, { version, ref: ref || manifest.ref || null, installed_at: manifest.installed_at || new Date().toISOString(), updated_at: new Date().toISOString(), items });
+  writeManifest(repo, { version, ref: pin, installed_at: manifest.installed_at || new Date().toISOString(), updated_at: new Date().toISOString(), items });
   return report;
 }
 

@@ -120,8 +120,35 @@ test('cloud entry uses an attached checkout only when it is the pinned version',
 test('install refuses a ref that is not plain git ref characters', () => {
   for (const ref of ['v1;touch x', "a'b", '$(id)', '-x', 'a..b']) assert.throws(() => install(tempRepo(), { cloudEntry: true, ref }), /invalid ref/, ref);
   const repo = tempRepo();
-  install(repo, { cloudEntry: true, ref: 'release/0.2' });
-  assert.match(read(repo, '.claude/skills/cheque/SKILL.md'), /--branch 'release\/0\.2' /);
+  install(repo, { cloudEntry: true, ref: 'release/0.2+build.1' });
+  const entry = read(repo, '.claude/skills/cheque/SKILL.md');
+  assert.match(entry, /--branch 'release\/0\.2\+build\.1' /);
+  assert.match(entry, new RegExp(`\\.cache/cheque/v${PACKAGE_VERSION.replaceAll('.', '\\.')}-release_0\\.2_build\\.1"`), 'a custom ref gets its own cache directory');
+});
+
+test('a release tag recorded by an earlier install follows the package version', () => {
+  const repo = tempRepo();
+  install(repo, { cloudEntry: true, version: '0.1.0', ref: 'v0.1.0' });
+  install(repo);
+  assert.match(read(repo, '.claude/skills/cheque/SKILL.md'), new RegExp(`--branch 'v${PACKAGE_VERSION.replaceAll('.', '\\.')}' `));
+  assert.equal(JSON.parse(read(repo, '.cheque/managed.json')).ref, null);
+  install(repo, { ref: 'main' });
+  install(repo);
+  assert.equal(JSON.parse(read(repo, '.cheque/managed.json')).ref, 'main', 'a custom ref is kept');
+});
+
+test('cloud entry setup fails when the pinned version is not available', () => {
+  const parent = realpathSync(tempDir('cheque-cloud-'));
+  const repo = join(parent, 'app');
+  mkdirSync(repo);
+  git(repo, 'init', '-q', '-b', 'main');
+  install(repo, { cloudEntry: true });
+  const snippet = read(repo, '.claude/skills/cheque/SKILL.md').match(/```sh\n([\s\S]*?)```/)[1];
+  // A git that refuses to clone stands in for a session without network access.
+  const bin = join(parent, 'bin');
+  write(bin, 'git', `#!/bin/sh\n[ "$1" = clone ] && exit 128\nexec ${execFileSync('which', ['git'], { encoding: 'utf8' }).trim()} "$@"\n`);
+  execFileSync('chmod', ['+x', join(bin, 'git')]);
+  assert.throws(() => execFileSync('bash', ['-c', snippet], { cwd: repo, env: { PATH: `${bin}:${process.env.PATH}`, HOME: join(parent, 'home') }, stdio: 'pipe' }), /is not available/);
 });
 
 test('cloud entry clones only the pinned ref', () => {
