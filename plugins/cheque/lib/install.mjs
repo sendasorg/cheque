@@ -26,7 +26,7 @@ function template(name, vars = {}) {
 function plan({ cloudEntry, version, ref }) {
   // A custom ref gets its own cache directory, so the default tag and another
   // ref that declare the same version never reuse each other's checkout.
-  const vars = { version, ref: ref || `v${version}`, cache: ref ? `v${version}-${ref.replace(/[/+]/g, '_')}` : `v${version}`, repo_url: 'https://github.com/sendasorg/cheque' };
+  const vars = { version, ref: ref || `v${version}`, cache: ref ? `v${version}-${sha(ref).slice(0, 12)}` : `v${version}`, repo_url: 'https://github.com/sendasorg/cheque' };
   const items = [
     { path: '.cheque/config.yaml', kind: 'seed', content: template('config.yaml') },
     { path: '.cheque/README.md', kind: 'file', content: template('cheque-readme.md', vars) },
@@ -96,19 +96,25 @@ function removeBlock(existing) {
   return before + existing.slice(end + BLOCK_END.length + 1);
 }
 
-// The ref is written into the cloud entry's shell commands and can come from
-// the committed manifest, so only plain git ref characters are accepted. A
-// release tag means "this release", so a tag recorded by an earlier install
-// follows the package version on update instead of pinning the old release.
-function customRef(ref) {
+// The ref is written into the cloud entry's shell commands, inside single
+// quotes, and can come from the committed manifest. So it must be a valid git
+// ref name with no quote in it. A release tag means "this release": a tag
+// recorded by an earlier install follows the package version on update, and
+// an explicit tag for another release is refused.
+function customRef(ref, { explicit, version }) {
   if (!ref) return null;
-  if (!/^[A-Za-z0-9][A-Za-z0-9._/+-]*$/.test(ref) || ref.includes('..')) throw new Error(`invalid ref ${JSON.stringify(ref)}: use letters, digits, '.', '_', '/', '+' and '-'`);
-  return /^v\d+\.\d+\.\d+$/.test(ref) ? null : ref;
+  const invalid = /[\s'~^:?*[\\\x00-\x1f\x7f]/.test(ref) || ref.startsWith('-') || ref.startsWith('/') || ref.endsWith('/') || ref.endsWith('.') || ref.endsWith('.lock') || ref.includes('..') || ref.includes('//') || ref.includes('@{') || ref === '@';
+  if (invalid) throw new Error(`invalid ref ${JSON.stringify(ref)}: not a git ref name, or contains a quote`);
+  if (/^v\d+\.\d+\.\d+$/.test(ref)) {
+    if (explicit && ref !== `v${version}`) throw new Error(`ref ${ref} is a different release than cheque ${version}; install that release instead`);
+    return null;
+  }
+  return ref;
 }
 
 export function install(repo, { cloudEntry = false, version = PACKAGE_VERSION, ref = null } = {}) {
   const manifest = readManifest(repo);
-  const pin = customRef(ref || manifest.ref);
+  const pin = customRef(ref || manifest.ref, { explicit: Boolean(ref), version });
   const recorded = Object.fromEntries(manifest.items.map((i) => [i.path, i]));
   const report = { created: [], updated: [], unchanged: [], conflicts: [], kept: [] };
   const items = [];

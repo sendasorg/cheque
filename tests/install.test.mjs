@@ -118,12 +118,20 @@ test('cloud entry uses an attached checkout only when it is the pinned version',
 });
 
 test('install refuses a ref that is not plain git ref characters', () => {
-  for (const ref of ['v1;touch x', "a'b", '$(id)', '-x', 'a..b']) assert.throws(() => install(tempRepo(), { cloudEntry: true, ref }), /invalid ref/, ref);
+  for (const ref of ['v1;touch x', "a'b", '-x', 'a..b', 'a b', 'a@{1}', 'x.lock']) assert.throws(() => install(tempRepo(), { cloudEntry: true, ref }), /invalid ref/, ref);
+  for (const ref of ['release@candidate', 'a=b', '$(id)']) assert.doesNotThrow(() => install(tempRepo(), { cloudEntry: true, ref }), ref);
+  assert.throws(() => install(tempRepo(), { ref: 'v0.0.1' }), /different release/);
   const repo = tempRepo();
   install(repo, { cloudEntry: true, ref: 'release/0.2+build.1' });
   const entry = read(repo, '.claude/skills/cheque/SKILL.md');
   assert.match(entry, /--branch 'release\/0\.2\+build\.1' /);
-  assert.match(entry, new RegExp(`\\.cache/cheque/v${PACKAGE_VERSION.replaceAll('.', '\\.')}-release_0\\.2_build\\.1"`), 'a custom ref gets its own cache directory');
+  const cacheOf = (ref) => {
+    const r = tempRepo();
+    install(r, { cloudEntry: true, ref });
+    return read(r, '.claude/skills/cheque/SKILL.md').match(/\.cache\/cheque\/([^"]+)"/)[1];
+  };
+  const caches = ['release/a+b', 'release/a_b', 'release/a/b'].map(cacheOf);
+  assert.equal(new Set([...caches, cacheOf(null)]).size, 4, 'each ref gets its own cache directory');
 });
 
 test('a release tag recorded by an earlier install follows the package version', () => {
