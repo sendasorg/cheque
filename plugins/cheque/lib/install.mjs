@@ -3,6 +3,7 @@
 // shared files. Install and update never overwrite content they do not own;
 // uninstall never removes shared documents (constraints, glossary, ADRs,
 // verification skills) even if a cheque workflow helped create them.
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync, readdirSync, rmdirSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
@@ -97,14 +98,14 @@ function removeBlock(existing) {
 }
 
 // The ref is written into the cloud entry's shell commands, inside single
-// quotes, and can come from the committed manifest. So it must be a valid git
-// ref name with no quote in it. A release tag means "this release": a tag
-// recorded by an earlier install follows the package version on update, and
-// an explicit tag for another release is refused.
+// quotes, and can come from the committed manifest. So it must be a name git
+// accepts as a branch or tag, with no quote in it. A release tag means "this
+// release": a tag recorded by an earlier install follows the package version
+// on update, and an explicit tag for another release is refused.
 function customRef(ref, { explicit, version }) {
   if (!ref) return null;
-  const invalid = /[\s'~^:?*[\\\x00-\x1f\x7f]/.test(ref) || ref.startsWith('-') || ref.startsWith('/') || ref.endsWith('/') || ref.endsWith('.') || ref.endsWith('.lock') || ref.includes('..') || ref.includes('//') || ref.includes('@{') || ref === '@';
-  if (invalid) throw new Error(`invalid ref ${JSON.stringify(ref)}: not a git ref name, or contains a quote`);
+  const valid = !ref.includes("'") && spawnSync('git', ['check-ref-format', '--branch', ref], { stdio: 'ignore' }).status === 0;
+  if (!valid) throw new Error(`invalid ref ${JSON.stringify(ref)}: not a git branch or tag name, or contains a quote`);
   if (/^v\d+\.\d+\.\d+$/.test(ref)) {
     if (explicit && ref !== `v${version}`) throw new Error(`ref ${ref} is a different release than cheque ${version}; install that release instead`);
     return null;
