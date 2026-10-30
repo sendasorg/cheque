@@ -24,7 +24,12 @@ over to its entry point.
      d=
    done
    CHEQUE_HOME="${d:-$HOME/.cache/cheque/{{cache}}}"
-   ok "$CHEQUE_HOME" || git clone --depth 1 --branch '{{ref}}' {{repo_url}} "$CHEQUE_HOME"
+   # Here CHEQUE_HOME is the cache unless a checkout passed; a cache that fails
+   # the check is partial or stale, and git clone refuses a non-empty directory.
+   if ! ok "$CHEQUE_HOME"; then
+     rm -rf "$HOME/.cache/cheque/{{cache}}"
+     git clone --depth 1 --branch '{{ref}}' {{repo_url}} "$HOME/.cache/cheque/{{cache}}"
+   fi
    ok "$CHEQUE_HOME" || { echo "cheque {{version}} is not available at $CHEQUE_HOME" >&2; false; }
    ```
 

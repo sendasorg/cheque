@@ -151,6 +151,37 @@ test('a release tag recorded by an earlier install follows the package version',
   assert.equal(JSON.parse(read(repo, '.cheque/managed.json')).ref, 'main', 'a custom ref is kept');
 });
 
+test('cloud entry replaces a stale cache instead of failing the clone', () => {
+  const parent = realpathSync(tempDir('cheque-cloud-'));
+  const repo = join(parent, 'app');
+  mkdirSync(repo);
+  git(repo, 'init', '-q', '-b', 'main');
+  install(repo, { cloudEntry: true });
+  const snippet = read(repo, '.claude/skills/cheque/SKILL.md').match(/```sh\n([\s\S]*?)```/)[1];
+  const home = join(parent, 'home');
+  const cache = join(home, '.cache/cheque', `v${PACKAGE_VERSION}`);
+  write(cache, 'plugins/cheque/.claude-plugin/plugin.json', '{\n  "version": "0.0.1"\n}\n');
+  // A git whose clone refuses a non-empty destination, as git does, and
+  // otherwise writes a checkout of the pinned version.
+  const bin = join(parent, 'bin');
+  const realGit = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
+  write(bin, 'git', `#!/bin/sh
+if [ "$1" = clone ]; then
+  for a; do dest="$a"; done
+  [ -e "$dest" ] && [ -n "$(ls -A "$dest")" ] && exit 128
+  mkdir -p "$dest/plugins/cheque/.claude-plugin" "$dest/plugins/cheque/skills/deliver"
+  printf '{\\n  "version": "${PACKAGE_VERSION}"\\n}\\n' > "$dest/plugins/cheque/.claude-plugin/plugin.json"
+  echo deliver > "$dest/plugins/cheque/skills/deliver/SKILL.md"
+  exit 0
+fi
+exec ${realGit} "$@"
+`);
+  execFileSync('chmod', ['+x', join(bin, 'git')]);
+  const out = execFileSync('bash', ['-c', `${snippet}\necho "$CHEQUE_HOME"`], { cwd: repo, env: { PATH: `${bin}:${process.env.PATH}`, HOME: home }, encoding: 'utf8' });
+  assert.equal(out.trim().split('\n').pop(), cache);
+  assert.match(read(cache, 'plugins/cheque/.claude-plugin/plugin.json'), new RegExp(`"version": "${PACKAGE_VERSION.replaceAll('.', '\\.')}"`));
+});
+
 test('cloud entry setup fails when the pinned version is not available', () => {
   const parent = realpathSync(tempDir('cheque-cloud-'));
   const repo = join(parent, 'app');
