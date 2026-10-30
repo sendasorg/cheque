@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, readFileSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
-import { install, uninstall, installStatus } from '../plugins/cheque/lib/install.mjs';
-import { tempRepo, write } from './helpers.mjs';
+import { install, uninstall, installStatus, PACKAGE_VERSION } from '../plugins/cheque/lib/install.mjs';
+import { git, tempDir, tempRepo, write } from './helpers.mjs';
 
 const read = (repo, p) => readFileSync(join(repo, p), 'utf8');
 
@@ -87,4 +88,126 @@ test('cloud entry is kept on update once installed', () => {
   install(repo, { cloudEntry: true });
   install(repo);
   assert.ok(existsSync(join(repo, '.agents/skills/cheque/SKILL.md')));
+});
+
+// Runs the cloud entry's setup snippet in a repository whose parent directory
+// may hold an attached cheque checkout, and returns the CHEQUE_HOME it chose.
+function cloudEntryHome({ attached, cached, envHome, attachedSkill = true, ref = null }) {
+  const parent = realpathSync(tempDir('cheque-cloud-'));
+  const repo = join(parent, 'app');
+  mkdirSync(repo);
+  git(repo, 'init', '-q', '-b', 'main');
+  install(repo, { cloudEntry: true, ref });
+  const snippet = read(repo, '.claude/skills/cheque/SKILL.md').match(/```sh\n([\s\S]*?)```/)[1];
+  const home = join(parent, 'home');
+  const cacheDir = read(repo, '.claude/skills/cheque/SKILL.md').match(/\.cache\/cheque\/([^"]+)"/)[1];
+  const checkout = (dir, version, { skill = true } = {}) => {
+    write(dir, 'plugins/cheque/.claude-plugin/plugin.json', `{\n  "name": "cheque",\n  "version": "${version}"\n}\n`);
+    if (skill) write(dir, 'plugins/cheque/skills/deliver/SKILL.md', 'deliver\n');
+  };
+  if (attached) checkout(join(parent, 'cheque'), attached, { skill: attachedSkill });
+  if (cached) checkout(join(home, '.cache/cheque', cacheDir), cached);
+  const env = { PATH: process.env.PATH, HOME: home, ...(envHome ? { CHEQUE_HOME: join(parent, 'cheque') } : {}) };
+  return execFileSync('bash', ['-c', `${snippet}\necho "$CHEQUE_HOME"`], { cwd: repo, env, encoding: 'utf8' }).trim().split('\n').pop().replace(parent, '<parent>');
+}
+
+test('cloud entry uses an attached checkout only when it is the pinned version', () => {
+  assert.equal(cloudEntryHome({ attached: PACKAGE_VERSION }), '<parent>/app/../cheque');
+  assert.equal(cloudEntryHome({ attached: '0.0.1', cached: PACKAGE_VERSION }), `<parent>/home/.cache/cheque/v${PACKAGE_VERSION}`);
+  assert.equal(cloudEntryHome({ attached: '0.0.1', cached: PACKAGE_VERSION, envHome: true }), `<parent>/home/.cache/cheque/v${PACKAGE_VERSION}`);
+  assert.equal(cloudEntryHome({ attached: PACKAGE_VERSION, attachedSkill: false, cached: PACKAGE_VERSION }), `<parent>/home/.cache/cheque/v${PACKAGE_VERSION}`);
+});
+
+test('cloud entry pinned to a custom ref ignores other checkouts of the same version', () => {
+  const home = cloudEntryHome({ ref: 'release/next', attached: PACKAGE_VERSION, envHome: true, cached: PACKAGE_VERSION });
+  assert.match(home, new RegExp(`^<parent>/home/\\.cache/cheque/v${PACKAGE_VERSION.replaceAll('.', '\\.')}-[0-9a-f]{12}$`));
+});
+
+test('install refuses a ref that is not plain git ref characters', () => {
+  for (const ref of ['v1;touch x', "a'b", '-x', 'a..b', 'a b', 'a@{1}', 'x.lock', '.candidate', 'release/.candidate', 'a.lock/b', 'refs/heads/main', '@{-1}']) assert.throws(() => install(tempRepo(), { cloudEntry: true, ref }), /invalid ref/, ref);
+  for (const ref of ['release@candidate', 'a=b', '$(id)']) assert.doesNotThrow(() => install(tempRepo(), { cloudEntry: true, ref }), ref);
+  assert.throws(() => install(tempRepo(), { ref: 'v0.0.1' }), /different release/);
+  const repo = tempRepo();
+  install(repo, { cloudEntry: true, ref: 'release/0.2+build.1' });
+  const entry = read(repo, '.claude/skills/cheque/SKILL.md');
+  assert.match(entry, /--branch 'release\/0\.2\+build\.1' /);
+  const cacheOf = (ref) => {
+    const r = tempRepo();
+    install(r, { cloudEntry: true, ref });
+    return read(r, '.claude/skills/cheque/SKILL.md').match(/\.cache\/cheque\/([^"]+)"/)[1];
+  };
+  const caches = ['release/a+b', 'release/a_b', 'release/a/b'].map(cacheOf);
+  assert.equal(new Set([...caches, cacheOf(null)]).size, 4, 'each ref gets its own cache directory');
+});
+
+test('a release tag recorded by an earlier install follows the package version', () => {
+  const repo = tempRepo();
+  install(repo, { cloudEntry: true, version: '0.1.0', ref: 'v0.1.0' });
+  install(repo);
+  assert.match(read(repo, '.claude/skills/cheque/SKILL.md'), new RegExp(`--branch 'v${PACKAGE_VERSION.replaceAll('.', '\\.')}' `));
+  assert.equal(JSON.parse(read(repo, '.cheque/managed.json')).ref, null);
+  install(repo, { ref: 'main' });
+  install(repo);
+  assert.equal(JSON.parse(read(repo, '.cheque/managed.json')).ref, 'main', 'a custom ref is kept');
+});
+
+test('cloud entry replaces a stale cache instead of failing the clone', () => {
+  const parent = realpathSync(tempDir('cheque-cloud-'));
+  const repo = join(parent, 'app');
+  mkdirSync(repo);
+  git(repo, 'init', '-q', '-b', 'main');
+  install(repo, { cloudEntry: true });
+  const snippet = read(repo, '.claude/skills/cheque/SKILL.md').match(/```sh\n([\s\S]*?)```/)[1];
+  const home = join(parent, 'home');
+  const cache = join(home, '.cache/cheque', `v${PACKAGE_VERSION}`);
+  write(cache, 'plugins/cheque/.claude-plugin/plugin.json', '{\n  "version": "0.0.1"\n}\n');
+  // A git whose clone refuses a non-empty destination, as git does, and
+  // otherwise writes a checkout of the pinned version.
+  const bin = join(parent, 'bin');
+  const realGit = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
+  write(bin, 'git', `#!/bin/sh
+if [ "$1" = clone ]; then
+  for a; do dest="$a"; done
+  [ -e "$dest" ] && [ -n "$(ls -A "$dest")" ] && exit 128
+  mkdir -p "$dest/plugins/cheque/.claude-plugin" "$dest/plugins/cheque/skills/deliver"
+  printf '{\\n  "version": "${PACKAGE_VERSION}"\\n}\\n' > "$dest/plugins/cheque/.claude-plugin/plugin.json"
+  echo deliver > "$dest/plugins/cheque/skills/deliver/SKILL.md"
+  exit 0
+fi
+exec ${realGit} "$@"
+`);
+  execFileSync('chmod', ['+x', join(bin, 'git')]);
+  const out = execFileSync('bash', ['-c', `${snippet}\necho "$CHEQUE_HOME"`], { cwd: repo, env: { PATH: `${bin}:${process.env.PATH}`, HOME: home }, encoding: 'utf8' });
+  assert.equal(out.trim().split('\n').pop(), cache);
+  assert.match(read(cache, 'plugins/cheque/.claude-plugin/plugin.json'), new RegExp(`"version": "${PACKAGE_VERSION.replaceAll('.', '\\.')}"`));
+});
+
+test('cloud entry setup fails when the pinned version is not available', () => {
+  const parent = realpathSync(tempDir('cheque-cloud-'));
+  const repo = join(parent, 'app');
+  mkdirSync(repo);
+  git(repo, 'init', '-q', '-b', 'main');
+  install(repo, { cloudEntry: true });
+  const snippet = read(repo, '.claude/skills/cheque/SKILL.md').match(/```sh\n([\s\S]*?)```/)[1];
+  // A git that refuses to clone stands in for a session without network access.
+  const bin = join(parent, 'bin');
+  write(bin, 'git', `#!/bin/sh\n[ "$1" = clone ] && exit 128\nexec ${execFileSync('which', ['git'], { encoding: 'utf8' }).trim()} "$@"\n`);
+  execFileSync('chmod', ['+x', join(bin, 'git')]);
+  assert.throws(() => execFileSync('bash', ['-c', snippet], { cwd: repo, env: { PATH: `${bin}:${process.env.PATH}`, HOME: join(parent, 'home') }, stdio: 'pipe' }), /is not available/);
+});
+
+test('cloud entry clones only the pinned ref', () => {
+  const repo = tempRepo();
+  install(repo, { cloudEntry: true });
+  const entry = read(repo, '.claude/skills/cheque/SKILL.md');
+  assert.doesNotMatch(entry, /CHEQUE_REF/);
+  assert.match(entry, new RegExp(`git clone --depth 1 --branch 'v${PACKAGE_VERSION.replaceAll('.', '\\.')}' `));
+});
+
+test('generated README names a command the helper accepts', () => {
+  const repo = tempRepo();
+  install(repo);
+  const readme = read(repo, '.cheque/README.md');
+  assert.doesNotMatch(readme, /cheque status`/);
+  assert.match(readme, /bin\/cheque checkpoint show/);
 });
