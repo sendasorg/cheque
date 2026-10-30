@@ -16,9 +16,10 @@ over to its entry point.
    # A session with sendasorg/cheque attached as a second repository has it
    # checked out next to this one; otherwise clone the pinned ref. A checkout
    # counts only if it is cheque {{version}}: an attached repository may be on
-   # another branch.
+   # another branch. An entry pinned to a custom ref looks only in that ref's
+   # own cache, since another checkout of the same version may be another ref.
    ok() { [ -n "$1" ] && [ -f "$1/plugins/cheque/skills/deliver/SKILL.md" ] && grep -qs '"version": "{{version}}"' "$1/plugins/cheque/.claude-plugin/plugin.json"; }
-   for d in "$CHEQUE_HOME" "$(git rev-parse --show-toplevel)/../cheque" "$HOME/.cache/cheque/{{cache}}"; do
+   for d in {{candidates}}; do
      ok "$d" && break
      d=
    done

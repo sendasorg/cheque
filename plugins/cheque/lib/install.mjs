@@ -27,7 +27,12 @@ function template(name, vars = {}) {
 function plan({ cloudEntry, version, ref }) {
   // A custom ref gets its own cache directory, so the default tag and another
   // ref that declare the same version never reuse each other's checkout.
-  const vars = { version, ref: ref || `v${version}`, cache: ref ? `v${version}-${sha(ref).slice(0, 12)}` : `v${version}`, repo_url: 'https://github.com/sendasorg/cheque' };
+  const cache = ref ? `v${version}-${sha(ref).slice(0, 12)}` : `v${version}`;
+  // Where the cloud entry looks for a checkout. The manifest check cannot tell
+  // refs of the same version apart, so a custom ref skips the attached
+  // repository and $CHEQUE_HOME and uses only its own cache.
+  const candidates = [...(ref ? [] : ['"$CHEQUE_HOME"', '"$(git rev-parse --show-toplevel)/../cheque"']), `"$HOME/.cache/cheque/${cache}"`].join(' ');
+  const vars = { version, ref: ref || `v${version}`, cache, candidates, repo_url: 'https://github.com/sendasorg/cheque' };
   const items = [
     { path: '.cheque/config.yaml', kind: 'seed', content: template('config.yaml') },
     { path: '.cheque/README.md', kind: 'file', content: template('cheque-readme.md', vars) },

@@ -92,20 +92,21 @@ test('cloud entry is kept on update once installed', () => {
 
 // Runs the cloud entry's setup snippet in a repository whose parent directory
 // may hold an attached cheque checkout, and returns the CHEQUE_HOME it chose.
-function cloudEntryHome({ attached, cached, envHome, attachedSkill = true }) {
+function cloudEntryHome({ attached, cached, envHome, attachedSkill = true, ref = null }) {
   const parent = realpathSync(tempDir('cheque-cloud-'));
   const repo = join(parent, 'app');
   mkdirSync(repo);
   git(repo, 'init', '-q', '-b', 'main');
-  install(repo, { cloudEntry: true });
+  install(repo, { cloudEntry: true, ref });
   const snippet = read(repo, '.claude/skills/cheque/SKILL.md').match(/```sh\n([\s\S]*?)```/)[1];
   const home = join(parent, 'home');
+  const cacheDir = read(repo, '.claude/skills/cheque/SKILL.md').match(/\.cache\/cheque\/([^"]+)"/)[1];
   const checkout = (dir, version, { skill = true } = {}) => {
     write(dir, 'plugins/cheque/.claude-plugin/plugin.json', `{\n  "name": "cheque",\n  "version": "${version}"\n}\n`);
     if (skill) write(dir, 'plugins/cheque/skills/deliver/SKILL.md', 'deliver\n');
   };
   if (attached) checkout(join(parent, 'cheque'), attached, { skill: attachedSkill });
-  if (cached) checkout(join(home, '.cache/cheque', `v${PACKAGE_VERSION}`), cached);
+  if (cached) checkout(join(home, '.cache/cheque', cacheDir), cached);
   const env = { PATH: process.env.PATH, HOME: home, ...(envHome ? { CHEQUE_HOME: join(parent, 'cheque') } : {}) };
   return execFileSync('bash', ['-c', `${snippet}\necho "$CHEQUE_HOME"`], { cwd: repo, env, encoding: 'utf8' }).trim().split('\n').pop().replace(parent, '<parent>');
 }
@@ -115,6 +116,11 @@ test('cloud entry uses an attached checkout only when it is the pinned version',
   assert.equal(cloudEntryHome({ attached: '0.0.1', cached: PACKAGE_VERSION }), `<parent>/home/.cache/cheque/v${PACKAGE_VERSION}`);
   assert.equal(cloudEntryHome({ attached: '0.0.1', cached: PACKAGE_VERSION, envHome: true }), `<parent>/home/.cache/cheque/v${PACKAGE_VERSION}`);
   assert.equal(cloudEntryHome({ attached: PACKAGE_VERSION, attachedSkill: false, cached: PACKAGE_VERSION }), `<parent>/home/.cache/cheque/v${PACKAGE_VERSION}`);
+});
+
+test('cloud entry pinned to a custom ref ignores other checkouts of the same version', () => {
+  const home = cloudEntryHome({ ref: 'release/next', attached: PACKAGE_VERSION, envHome: true, cached: PACKAGE_VERSION });
+  assert.match(home, new RegExp(`^<parent>/home/\\.cache/cheque/v${PACKAGE_VERSION.replaceAll('.', '\\.')}-[0-9a-f]{12}$`));
 });
 
 test('install refuses a ref that is not plain git ref characters', () => {
