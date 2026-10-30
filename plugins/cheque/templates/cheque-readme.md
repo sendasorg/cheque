@@ -25,5 +25,7 @@ them in place; it never keeps a second copy here.
 ## Status and records
 
 The authoritative record for each delivery is the checkpoint comment on its
-Linear issue. Ask the agent for "`cheque` status", or run
-`node <plugin directory>/bin/cheque checkpoint show` in this repository.
+Linear issue. Asking the agent for "`cheque` status", or running
+`node <plugin directory>/bin/cheque checkpoint show`, shows this checkout's
+local copy. A checkout that has not run the delivery has none; read the
+checkpoint comment on the issue instead.

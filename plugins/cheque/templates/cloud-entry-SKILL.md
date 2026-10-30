@@ -17,13 +17,13 @@ over to its entry point.
    # checked out next to this one; otherwise clone the pinned ref. A checkout
    # counts only if it is cheque {{version}}: an attached repository may be on
    # another branch.
-   ok() { [ -n "$1" ] && grep -qs '"version": "{{version}}"' "$1/plugins/cheque/.claude-plugin/plugin.json"; }
-   for d in "$CHEQUE_HOME" "$(git rev-parse --show-toplevel)/../cheque" "$HOME/.cache/cheque/{{ref}}"; do
+   ok() { [ -n "$1" ] && [ -f "$1/plugins/cheque/skills/deliver/SKILL.md" ] && grep -qs '"version": "{{version}}"' "$1/plugins/cheque/.claude-plugin/plugin.json"; }
+   for d in "$CHEQUE_HOME" "$(git rev-parse --show-toplevel)/../cheque" "$HOME/.cache/cheque/v{{version}}"; do
      ok "$d" && break
      d=
    done
-   CHEQUE_HOME="${d:-$HOME/.cache/cheque/{{ref}}}"
-   ok "$CHEQUE_HOME" || git clone --depth 1 --branch {{ref}} {{repo_url}} "$CHEQUE_HOME"
+   CHEQUE_HOME="${d:-$HOME/.cache/cheque/v{{version}}}"
+   ok "$CHEQUE_HOME" || git clone --depth 1 --branch '{{ref}}' {{repo_url}} "$CHEQUE_HOME"
    ok "$CHEQUE_HOME" || echo "cheque {{version}} is not available at $CHEQUE_HOME"
    ```
 

@@ -24,6 +24,9 @@ function template(name, vars = {}) {
 // `seed`: created once, then owned by the repository (never updated or removed).
 // `block`: a marked section inside a shared file.
 function plan({ cloudEntry, version, ref }) {
+  // The ref is written into the cloud entry's shell commands and can come from
+  // the committed manifest, so only plain git ref characters are accepted.
+  if (ref && (!/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(ref) || ref.includes('..'))) throw new Error(`invalid ref ${JSON.stringify(ref)}: use letters, digits, '.', '_', '/' and '-'`);
   const vars = { version, ref: ref || `v${version}`, repo_url: 'https://github.com/sendasorg/cheque' };
   const items = [
     { path: '.cheque/config.yaml', kind: 'seed', content: template('config.yaml') },
