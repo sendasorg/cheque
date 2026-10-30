@@ -31,7 +31,8 @@ over to its entry point.
    If the snippet fails (no network, no access, or no checkout of cheque
    {{version}}), stop and report the blocker.
    Cloud sessions authenticate GitHub only for the repositories attached to
-   the session, so attach {{repo_url}} as an additional repository, or use an
-   environment setup script that installs it at `$CHEQUE_HOME`.
+   the session, so attach {{repo_url}} as an additional repository so the
+   clone can authenticate, or use an environment setup script that checks out
+   {{ref}} at `$HOME/.cache/cheque/{{cache}}`.
 3. Read `$CHEQUE_HOME/plugins/cheque/skills/deliver/SKILL.md` and follow it. Its
    helper is `node $CHEQUE_HOME/plugins/cheque/bin/cheque`.

@@ -109,8 +109,10 @@ function removeBlock(existing) {
 // on update, and an explicit tag for another release is refused.
 function customRef(ref, { explicit, version }) {
   if (!ref) return null;
-  const valid = !ref.includes("'") && spawnSync('git', ['check-ref-format', '--branch', ref], { stdio: 'ignore' }).status === 0;
-  if (!valid) throw new Error(`invalid ref ${JSON.stringify(ref)}: not a git branch or tag name, or contains a quote`);
+  // `git clone --branch` takes a short branch or tag name, so a fully
+  // qualified refs/... name is refused rather than failing at clone time.
+  const valid = !ref.includes("'") && !ref.startsWith('refs/') && spawnSync('git', ['check-ref-format', '--branch', ref], { stdio: 'ignore' }).status === 0;
+  if (!valid) throw new Error(`invalid ref ${JSON.stringify(ref)}: use a short git branch or tag name with no quote`);
   if (/^v\d+\.\d+\.\d+$/.test(ref)) {
     if (explicit && ref !== `v${version}`) throw new Error(`ref ${ref} is a different release than cheque ${version}; install that release instead`);
     return null;

@@ -124,7 +124,7 @@ test('cloud entry pinned to a custom ref ignores other checkouts of the same ver
 });
 
 test('install refuses a ref that is not plain git ref characters', () => {
-  for (const ref of ['v1;touch x', "a'b", '-x', 'a..b', 'a b', 'a@{1}', 'x.lock', '.candidate', 'release/.candidate', 'a.lock/b']) assert.throws(() => install(tempRepo(), { cloudEntry: true, ref }), /invalid ref/, ref);
+  for (const ref of ['v1;touch x', "a'b", '-x', 'a..b', 'a b', 'a@{1}', 'x.lock', '.candidate', 'release/.candidate', 'a.lock/b', 'refs/heads/main']) assert.throws(() => install(tempRepo(), { cloudEntry: true, ref }), /invalid ref/, ref);
   for (const ref of ['release@candidate', 'a=b', '$(id)']) assert.doesNotThrow(() => install(tempRepo(), { cloudEntry: true, ref }), ref);
   assert.throws(() => install(tempRepo(), { ref: 'v0.0.1' }), /different release/);
   const repo = tempRepo();
